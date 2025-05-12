@@ -4,7 +4,7 @@ import Glide from '@glidejs/glide';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { getPostStats, Stats } from '../common/utils';
 import { Theme } from '../common/types';
-import { getPostStylesLegacy } from '../common/theme';
+import { getPostStyles } from './nostr-post.style';
 
 export default class NostrPost extends HTMLElement {
   private rendered: boolean = false;
@@ -599,7 +599,7 @@ export default class NostrPost extends HTMLElement {
     const shouldShowStats = this.getAttribute('show-stats') === "true"; // Check attribute directly
 
     this.innerHTML = `
-    ${getPostStylesLegacy(this.theme)}
+    ${getPostStyles(this.theme)}
     <style>
       .nostr-mention {
         color: #1DA1F2;

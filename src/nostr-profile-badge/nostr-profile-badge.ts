@@ -2,7 +2,7 @@ import NDK, { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
-import { getProfileBadgeStylesLegacy } from '../common/theme';
+import { getProfileBadgeStyles } from './nostr-profile-badge.style';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
@@ -323,7 +323,7 @@ export default class NostrProfileBadge extends HTMLElement {
     }
 
     // Combine styles and content, assign ONCE to innerHTML
-    this.innerHTML = getProfileBadgeStylesLegacy(this.theme) + contentHTML;
+    this.innerHTML = getProfileBadgeStyles(this.theme) + contentHTML;
 
     this.attachEventListeners();
   }

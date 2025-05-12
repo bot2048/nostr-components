@@ -2,7 +2,7 @@ import NDK, { NDKKind, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { DEFAULT_RELAYS } from '../common/constants';
 import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
-import { getProfileStyles } from '../common/theme';
+import { getProfileStyles } from './nostr-profile.style';
 
 export default class NostrProfile extends HTMLElement {
   private rendered: boolean = false;

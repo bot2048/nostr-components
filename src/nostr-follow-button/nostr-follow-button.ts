@@ -1,6 +1,7 @@
 import NDK, { NDKNip07Signer, NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
 import { DEFAULT_RELAYS } from "../common/constants";
-import { getLoadingNostrich, getNostrLogo, getSuccessAnimation, getFollowButtonStyles } from "../common/theme";
+import { getLoadingNostrich, getNostrLogo, getSuccessAnimation } from "../common/theme-variables";
+import { getFollowButtonStyles } from "./nostr-follow-button.style";
 import { Theme } from "../common/types";
 
 export default class NostrFollowButton extends HTMLElement {
