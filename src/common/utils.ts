@@ -1,113 +1,80 @@
-import NDK, { NDKKind, NDKTag } from '@nostr-dev-kit/ndk';
-import { decode } from 'light-bolt11-decoder';
+/**
+ * Common utility functions and type definitions used across components
+ */
 
+// Import only types needed
 import { Theme } from './types';
-import { MILLISATS_PER_SAT } from './constants';
 
-export function maskNPub(npubString: string = '', length=3) {
-    const npubLength = npubString.length;
+/**
+ * Masks a nostr public key (npub) by showing only a few characters at the beginning and end
+ * @param npubString The full npub string to mask
+ * @param length Number of characters to show at beginning and end
+ * @returns A masked npub string like npub1abc...xyz
+ */
+export function maskNPub(npubString: string = '', length=3): string {
+  const npubLength = npubString.length;
 
-    if(npubLength !== 63) {
-        return 'Invalid nPub';
-    }
+  if(npubLength !== 63) {
+  return 'Invalid nPub';
+  }
 
-    let result = 'npub1';
+  let result = 'npub1';
 
-    for(let i=5; i<length+5; i++) {
-        result += npubString[i];
-    }
+  for(let i=5; i<length+5; i++) {
+  result += npubString[i];
+  }
 
-    result += '...';
+  result += '...';
 
-    let suffix = '';
-    for(let i=npubLength-1; i>=npubLength-length; i--) {
-        suffix = npubString[i] + suffix;
-    }
+  let suffix = '';
+  for(let i=npubLength-1; i>=npubLength-length; i--) {
+  suffix = npubString[i] + suffix;
+  }
 
-    result += suffix;
+  result += suffix;
 
-    return result;
+  return result;
 }
 
+/**
+ * Stats interface used for post statistics
+ */
 export type Stats = {
-    likes: number,
-    reposts: number,
-    zaps: number,
-    replies: number,
+  likes: number,
+  reposts: number,
+  zaps: number,
+  replies: number,
 };
 
-export async function getPostStats(ndk: NDK, postId: string): Promise<Stats> {
-    const reposts = await ndk.fetchEvents({
-      kinds: [NDKKind.Repost],
-      '#e': [postId || '']
-    });
+/**
+ * Extract media items (images, videos, links) from post content and tags
+ * @param content Post content text
+ * @param tags Array of tags associated with the post
+ * @returns Array of media items with type and value
+ */
+export function extractMediaItems(content: string, tags: any[]): any[] {
+  const mediaItems: any[] = [];
   
-    // Only take the count of direct reposts
-    const repostsCount = Array.from(reposts).filter(repost => {
-      const pTagCounts = repost.tags.filter((tag: NDKTag) => tag[0] === 'p').length;
-  
-      return pTagCounts === 1;
-    }).length;
-  
-    const likes = await ndk.fetchEvents({
-      kinds: [NDKKind.Reaction],
-      '#e': [postId || '']
-    });
-  
-    // TODO: Add zap receipt validation - https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-f-validating-zap-receipts
-    // const zaps = await ndk.fetchEvents({
-    //   kinds: [NDKKind.Zap],
-    //   '#e': [postId || '']
-    // });
-  
-    // const zapAmount = Array.from(zaps).reduce((prev, curr) => {
-    //   const bolt11Tag = curr.getMatchingTags('bolt11');
-  
-    //   if(
-    //     !bolt11Tag ||
-    //     !Array.isArray(bolt11Tag) ||
-    //     bolt11Tag.length === 0 ||
-    //     !bolt11Tag[0] ||
-    //     !Array.isArray(bolt11Tag[0]) ||
-    //     (bolt11Tag[0] as string[]).length === 0
-    //   ) {
-    //     return prev;
-    //   }
-  
-    //   const bolt11 = bolt11Tag[0][1];
-  
-    //   const decodedbol11 = decode(bolt11);
-  
-    //   const amountSection = decodedbol11.sections.find(section => section.name === 'amount');
-  
-    //   if(amountSection) {
-    //     const millisats = Number(amountSection.value);
-  
-    //     return prev + millisats;
-    //   }
-  
-    //   return prev;
-    // }, 0);
+  // Regular file URLs in content
+  const urlRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|gif|png|mp4|mov|avi|webm))\b/gi;
+  let match;
+  while ((match = urlRegex.exec(content)) !== null) {
+  const url = match[1];
 
-    const zapAmount = 0;
+  // Skip image URLs that are already represented by tags
+  if (!tags.some(tag => tag[0] === 'url' && tag[1] === url)) {
+  const extension = url.split('.').pop()?.toLowerCase();
+
+  // Determine the type based on the extension
+  const type = ['jpg', 'jpeg', 'gif', 'png'].includes(extension || '') ? 'image' :
+  ['mp4', 'mov', 'avi', 'webm'].includes(extension || '') ? 'video' : 'link';
   
-    const replies = await ndk.fetchEvents({
-      kinds: [NDKKind.Text],
-      '#e': [postId || '']
-    });
-  
-    // Only take the direct replies
-    // https://github.com/nostr-protocol/nips/blob/master/10.md#positional-e-tags-deprecated
-    const replyCount = Array.from(replies).filter(reply => {
-      const eTagsCount = reply.tags.filter((tag: NDKTag) => tag[0] === 'e').length;
-  
-      return eTagsCount === 1;
-    }).length;
-  
-    return {
-      likes: likes.size,
-      reposts: repostsCount,
-      zaps: zapAmount / MILLISATS_PER_SAT,
-      replies: replyCount,
-    };
+  mediaItems.push({
+  type,
+  value: url
+  });
   }
+  }
+  
+  return mediaItems;
+}
