@@ -134,19 +134,19 @@ export class NostrService {
    * @param relayUrl The URL of the relay to remove
    */
   async removeRelay(relayUrl: string): Promise<void> {
-  const index = this.relayUrls.indexOf(relayUrl);
-  if (index !== -1) {
-  this.relayUrls.splice(index, 1);
-  // We'll handle this by reinitializing the NDK with the filtered relay list
-  this.ndk = new NDK({
-  explicitRelayUrls: this.relayUrls
-  });
-  
-  if (this._isConnected) {
-  // Reconnect if we were already connected
-  await this.ndk.connect();
-  }
-  }
+    const index = this.relayUrls.indexOf(relayUrl);
+    if (index !== -1) {
+      this.relayUrls.splice(index, 1);
+      // We'll handle this by reinitializing the NDK with the filtered relay list
+      this.ndk = new NDK({
+        explicitRelayUrls: this.relayUrls
+      });
+      
+      if (this._isConnected) {
+        // Reconnect if we were already connected
+        await this.ndk.connect();
+      }
+    }
   }
 
   /**
@@ -199,22 +199,22 @@ export class NostrService {
    * @returns Promise resolving to an array of NDKEvents
    */
   async getUserPosts(userIdentifier: string, limit: number = 20): Promise<NDKEvent[]> {
-  try {
-  await this.ensureConnected();
-  const user = await this.ndk.getUser({ npub: userIdentifier });
-  
-  const filter: NDKFilter = {
-  authors: [user.pubkey],
-  kinds: [NDKKind.Text],
-  limit
-  };
-  
-  const events = await this.ndk.fetchEvents(filter);
-  return Array.from(events);
-  } catch (error) {
-  console.error('Error fetching user posts', error);
-  return [];
-  }
+    try {
+      await this.ensureConnected();
+      const user = await this.ndk.getUser({ npub: userIdentifier });
+      
+      const filter: NDKFilter = {
+        authors: [user.pubkey],
+        kinds: [NDKKind.Text],
+        limit
+      };
+      
+      const events = await this.ndk.fetchEvents(filter);
+      return Array.from(events);
+    } catch (error) {
+      console.error('Error fetching user posts', error);
+      return [];
+    }
   }
 
   /**
@@ -223,39 +223,39 @@ export class NostrService {
    * @returns Promise resolving to a Stats object
    */
   async getPostStats(noteId: string): Promise<Stats> {
-  try {
-  await this.ensureConnected();
+    try {
+      await this.ensureConnected();
+      
+      const reactions = await this.ndk.fetchEvents({
+        kinds: [NDKKind.Reaction],
+        '#e': [noteId]
+      });
+      
+      const reposts = await this.ndk.fetchEvents({
+        kinds: [NDKKind.Repost],
+        '#e': [noteId]
+      });
+      
+      const zaps = await this.ndk.fetchEvents({
+        kinds: [NDKKind.Zap],
+        '#e': [noteId]
+      });
   
-  const reactions = await this.ndk.fetchEvents({
-  kinds: [NDKKind.Reaction],
-  '#e': [noteId]
-  });
+      const replies = await this.ndk.fetchEvents({
+        kinds: [NDKKind.Text],
+        '#e': [noteId]
+      });
   
-  const reposts = await this.ndk.fetchEvents({
-  kinds: [NDKKind.Repost],
-  '#e': [noteId]
-  });
-  
-  const zaps = await this.ndk.fetchEvents({
-  kinds: [NDKKind.Zap],
-  '#e': [noteId]
-  });
-  
-  const replies = await this.ndk.fetchEvents({
-  kinds: [NDKKind.Text],
-  '#e': [noteId]
-  });
-  
-  return {
-  likes: reactions.size,
-  reposts: reposts.size,
-  zaps: zaps.size,
-  replies: replies.size
-  };
-  } catch (error) {
-  console.error('Error getting post stats', error);
-  return { likes: 0, reposts: 0, zaps: 0, replies: 0 };
-  }
+      return {
+        likes: reactions.size,
+        reposts: reposts.size,
+        zaps: zaps.size,
+        replies: replies.size
+      };
+    } catch (error) {
+      console.error('Error getting post stats', error);
+      return { likes: 0, reposts: 0, zaps: 0, replies: 0 };
+    }
   }
 
   /**
@@ -276,31 +276,31 @@ export class NostrService {
   
   // Fetch the current contact list
   const contactListEvents = await this.ndk.fetchEvents({
-  authors: [currentUser.pubkey],
-  kinds: [NDKKind.Contacts]
+    authors: [currentUser.pubkey],
+    kinds: [NDKKind.Contacts]
   });
   
   let contactList: NDKEvent;
   if (contactListEvents.size === 0) {
-  // Create a new contact list if none exists
-  contactList = new NDKEvent(this.ndk);
-  contactList.kind = NDKKind.Contacts;
+    // Create a new contact list if none exists
+    contactList = new NDKEvent(this.ndk);
+    contactList.kind = NDKKind.Contacts;
   } else {
-  // Use the most recent contact list
-  contactList = Array.from(contactListEvents)[0];
+    // Use the most recent contact list
+    contactList = Array.from(contactListEvents)[0];
   }
   
-  // Add the new user to the contact list
-  contactList.tags = [...contactList.tags, ['p', userPubkey]];
-  
-  // Publish the updated contact list
-  await contactList.publish();
-  return true;
+    // Add the new user to the contact list
+    contactList.tags = [...contactList.tags, ['p', userPubkey]];
+    
+    // Publish the updated contact list
+    await contactList.publish();
+    return true;
   } catch (error) {
-  console.error('Error following user', error);
-  return false;
+    console.error('Error following user', error);
+    return false;
   }
-  }
+}
 
   /**
    * Subscribe to events matching a filter
@@ -309,9 +309,9 @@ export class NostrService {
    * @returns The subscription object
    */
   subscribeToEvents(filter: NDKFilter, callback: (event: NDKEvent) => void): NDKSubscription {
-  const subscription = this.ndk.subscribe(filter);
-  subscription.on('event', callback);
-  return subscription;
+    const subscription = this.ndk.subscribe(filter);
+    subscription.on('event', callback);
+    return subscription;
   }
 
   /**
@@ -319,9 +319,9 @@ export class NostrService {
    * @private
    */
   private async ensureConnected(): Promise<void> {
-  if (!this._isConnected) {
-  await this.connectToNostr();
-  }
+    if (!this._isConnected) {
+      await this.connectToNostr();
+    }
   }
 
   /**
@@ -329,7 +329,7 @@ export class NostrService {
    * @returns The NDK instance
    */
   getNDK(): NDK {
-  return this.ndk;
+    return this.ndk;
   }
 
   /**
@@ -337,7 +337,7 @@ export class NostrService {
    * @returns Connection status
    */
   get isConnected(): boolean {
-  return this._isConnected;
+    return this._isConnected;
   }
 
   /**
@@ -345,7 +345,7 @@ export class NostrService {
    * @returns The current user or null
    */
   get currentUser(): NDKUser | null {
-  return this._user;
+    return this._user;
   }
 
   /**

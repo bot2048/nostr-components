@@ -5,6 +5,7 @@ import { nostrService } from '../common/nostr-service';
 import { Stats } from '../common/utils';
 import { Theme } from '../common/types';
 import { getPostStyles } from './nostr-post.style';
+import { replyIcon, likeIcon, zapIcon, repostIcon, errorIcon } from '../common/icons';
 
 export default class NostrPost extends HTMLElement {
   private rendered: boolean = false;
@@ -100,24 +101,24 @@ export default class NostrPost extends HTMLElement {
   }
 
   if(name === "onClick") {
-  this.onClick = window[newValue];
+    this.onClick = window[newValue];
   }
 
   if(name === "onAuthorClick") {
-  this.onAuthorClick = window[newValue];
+    this.onAuthorClick = window[newValue];
   }
 
   if(name === "onMentionClick") {
-  this.onMentionClick = window[newValue];
+    this.onMentionClick = window[newValue];
   }
 
   if(name === 'theme') {
-  this.getTheme();
-  this.render();
+    this.getTheme();
+    this.render();
   }
 
   if(name === "show-stats") {
-  this.render();
+    this.render();
   }
   }
 
@@ -130,25 +131,25 @@ export default class NostrPost extends HTMLElement {
   const post = await nostrService.getPost(noteId);
 
   if(!this.receivedData) {
-  if(!post) {
-    this.isError = true;
-  } else {
-    this.receivedData = true;
-    this.post = post;
-  
-    const author = await this.post?.author.fetchProfile();
-    if(author) {
-    this.author = author;
-    }
-  
-    const shouldShowStats = this.getAttribute('show-stats');
-  
-    if(this.post && shouldShowStats) {
-    const stats = await nostrService.getPostStats(this.post.id);
-    if(stats) {
-    this.stats = stats;
-    }
-    }
+    if(!post) {
+      this.isError = true;
+    } else {
+      this.receivedData = true;
+      this.post = post;
+    
+      const author = await this.post?.author.fetchProfile();
+      if(author) {
+        this.author = author;
+      }
+    
+      const shouldShowStats = this.getAttribute('show-stats');
+    
+      if(this.post && shouldShowStats) {
+        const stats = await nostrService.getPostStats(this.post.id);
+        if(stats) {
+          this.stats = stats;
+        }
+      }
   
     this.isError = false;
   }
@@ -751,7 +752,7 @@ export default class NostrPost extends HTMLElement {
     : this.isError
     ? `
       <div class='error-container'>
-      <div class="error">&#9888;</div>
+      <div class="error">${errorIcon}</div>
       <span class="error-text">Unable to load post</span>
       </div>
       <div style="text-align: center; margin-top: 8px">
@@ -790,18 +791,12 @@ export default class NostrPost extends HTMLElement {
     : `
       <div class='stats-container'>
       <div class="stat">
-      <svg width="18" height="18" fill="#00b3ff">
-      <path xmlns="http://www.w3.org/2000/svg" d="M12.2197 1.65717C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
-      </svg>
+      ${replyIcon}
       <span>${this.stats!.replies}</span>
       </div>
 
       <div class="stat">
-      <svg width="18" height="18">
-      <g xmlns="http://www.w3.org/2000/svg">
-        <path fill="#ff006d" d="M12.2197 1.65717C7.73973 1.25408 5.14439 0.940234 3.12891 2.6623C0.948817 4.52502 0.63207 7.66213 2.35603 9.88052C3.01043 10.7226 4.28767 11.9877 5.51513 13.1462C6.75696 14.3184 7.99593 15.426 8.60692 15.9671C8.61074 15.9705 8.61463 15.9739 8.61859 15.9774C8.67603 16.0283 8.74753 16.0917 8.81608 16.1433C8.89816 16.2052 9.01599 16.2819 9.17334 16.3288C9.38253 16.3912 9.60738 16.3912 9.81656 16.3288C9.97391 16.2819 10.0917 16.2052 10.1738 16.1433C10.2424 16.0917 10.3139 16.0283 10.3713 15.9774C10.3753 15.9739 10.3792 15.9705 10.383 15.9671C10.994 15.426 12.2329 14.3184 13.4748 13.1462C14.7022 11.9877 15.9795 10.7226 16.6339 9.88052C18.3512 7.67065 18.0834 4.50935 15.8532 2.65572C13.8153 0.961905 11.2476 1.25349 9.49466 2.78774Z"/>
-      </g>
-      </svg>
+      ${likeIcon}
       <span>${this.stats!.likes}</span>
       </div>
       </div>

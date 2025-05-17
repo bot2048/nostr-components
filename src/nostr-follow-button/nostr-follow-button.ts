@@ -70,67 +70,67 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   if (name === "theme") {
-  await this.getTheme();
+    await this.getTheme();
   }
   
   this.render();
   }
 
   attachEventListeners() {
-  this.shadowRoot!.querySelector('.nostr-follow-button')?.addEventListener('click', async () => {
-  this.isError = false;
-  this.isLoading = true;
-  this.render();
+    this.shadowRoot!.querySelector('.nostr-follow-button')?.addEventListener('click', async () => {
+      this.isError = false;
+      this.isLoading = true;
+      this.render();
+      
+      try {
+        const userToFollowNpub = this.getAttribute('npub');
+        const userToFollowNip05 = this.getAttribute('nip05');
+        const userToFollowPubkey = this.getAttribute('pubkey');
+
+        if(!userToFollowNpub && !userToFollowNip05 && !userToFollowPubkey) {
+          this.errorMessage = 'Provide npub, nip05 or pubkey';
+          this.isError = true;
+        } else {
+          let pubkeyToFollow: string | null = null;
+        
+          if(userToFollowPubkey) {
+            pubkeyToFollow = userToFollowPubkey;
+          } else if(userToFollowNpub) {
+            const user = await nostrService.getProfile(userToFollowNpub);
+            if (user) {
+              pubkeyToFollow = user.pubkey;
+            }
+          } else if(userToFollowNip05) {
+            const ndk = nostrService.getNDK();
+            const userFromNip05 = await ndk.getUserFromNip05(userToFollowNip05);
+            if(userFromNip05) {
+              pubkeyToFollow = userFromNip05.pubkey;
+            }
+          }
   
-  try {
-  const userToFollowNpub = this.getAttribute('npub');
-  const userToFollowNip05 = this.getAttribute('nip05');
-  const userToFollowPubkey = this.getAttribute('pubkey');
-
-  if(!userToFollowNpub && !userToFollowNip05 && !userToFollowPubkey) {
-    this.errorMessage = 'Provide npub, nip05 or pubkey';
-    this.isError = true;
-  } else {
-    let pubkeyToFollow: string | null = null;
-  
-    if(userToFollowPubkey) {
-    pubkeyToFollow = userToFollowPubkey;
-    } else if(userToFollowNpub) {
-    const user = await nostrService.getProfile(userToFollowNpub);
-    if (user) {
-    pubkeyToFollow = user.pubkey;
-    }
-    } else if(userToFollowNip05) {
-    const ndk = nostrService.getNDK();
-    const userFromNip05 = await ndk.getUserFromNip05(userToFollowNip05);
-    if(userFromNip05) {
-    pubkeyToFollow = userFromNip05.pubkey;
-    }
-    }
-  
-    if(pubkeyToFollow) {
-    const success = await nostrService.followUser(pubkeyToFollow);
-    this.isFollowed = success;
-    }
-  }
+          if(pubkeyToFollow) {
+            const success = await nostrService.followUser(pubkeyToFollow);
+            this.isFollowed = success;
+          }
+        }
 
 
-  } catch(err) {
-  this.isError = true;
+      } catch(err) {
+        this.isError = true;
 
-  if(err.message && err.message.includes('NIP-07')) {
-    this.errorMessage = `Looks like you don't have any nostr signing browser extension.
-        Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
-  } else {
-    this.errorMessage = 'Please authorize, click the button to try again!';
-  }
+        if(err.message && err.message.includes('NIP-07')) {
+          this.errorMessage = `Looks like you don't have any nostr signing browser extension.
+          Please checkout the following video to setup a signer extension - <a href="https://youtu.be/8thRYn14nB0?t=310" target="_blank">Video</a>`;
+        } else {
+          this.errorMessage = 'Please authorize, click the button to try again!';
+        }
 
-  } finally {
-  this.isLoading = false;
-  }
+      } finally {
+        this.isLoading = false;
+      }
 
-  this.render();
-  });
+      this.render();
+    });
   }
 
   render() {
