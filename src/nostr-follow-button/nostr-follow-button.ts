@@ -16,8 +16,8 @@ export default class NostrFollowButton extends HTMLElement {
   private isFollowed: boolean = false;
 
   constructor() {
-  super();
-  this.attachShadow({ mode: 'open' });
+    super();
+    this.attachShadow({ mode: 'open' });
   }
 
   configureRelays = async () => {
@@ -39,31 +39,31 @@ export default class NostrFollowButton extends HTMLElement {
   
 
   getTheme = async () => {
-  this.theme = "light";
+    this.theme = "light";
 
-  const userTheme = this.getAttribute("theme");
+    const userTheme = this.getAttribute("theme");
 
-  if (userTheme) {
-  const isValidTheme = ["light", "dark"].includes(userTheme);
+    if (userTheme) {
+      const isValidTheme = ["light", "dark"].includes(userTheme);
 
-  if (!isValidTheme) {
-  throw new Error(
-    `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
-  );
-  }
+      if (!isValidTheme) {
+        throw new Error(
+          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
+        );
+      }
 
-  this.theme = userTheme as Theme;
-  }
+      this.theme = userTheme as Theme;
+    }
   };
 
   async connectedCallback() {
-  if (!this.rendered) {
-  await this.configureRelays();
-  await this.getTheme();
-  await nostrService.connectToNostr();
-  this.render();
-  this.rendered = true;
-  }
+    if (!this.rendered) {
+      await this.configureRelays();
+      await this.getTheme();
+      await nostrService.connectToNostr();
+      this.render();
+      this.rendered = true;
+    }
   }
 
   static get observedAttributes() {
@@ -71,16 +71,16 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   async attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-  if (name === "relays") {
-  await this.configureRelays();
-  await nostrService.connectToNostr();
-  }
+    if (name === "relays") {
+      await this.configureRelays();
+      await nostrService.connectToNostr();
+    }
 
-  if (name === "theme") {
-    await this.getTheme();
-  }
-  
-  this.render();
+    if (name === "theme") {
+      await this.getTheme();
+    }
+    
+    this.render();
   }
 
   attachEventListeners() {

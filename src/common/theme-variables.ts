@@ -4,48 +4,48 @@ import { Theme } from './types';
 export const themeVariables = {
   // Colors
   background: {
-  light: '#FFFFFF',
-  dark: '#000000',
+    light: '#FFFFFF',
+    dark: '#000000',
   },
   text: {
-  light: '#000000',
-  dark: '#FFFFFF',
+    light: '#000000',
+    dark: '#FFFFFF',
   },
   border: {
-  light: '#DDDDDD',
-  dark: 'transparent',
+    light: '#DDDDDD',
+    dark: 'transparent',
   },
   hover: {
-  light: '#F9F9F9',
-  dark: '#222222',
+    light: '#F9F9F9',
+    dark: '#222222',
   },
   accent: {
-  light: '#3B82F6', // Blue
-  dark: '#60A5FA',  // Light blue
+    light: '#3B82F6', // Blue
+    dark: '#60A5FA',  // Light blue
   },
   
   // Sizes
   borderRadius: {
-  small: '4px',
-  medium: '8px',
-  large: '12px',
+    small: '4px',
+    medium: '8px',
+    large: '12px',
   },
   
   // Font sizes
   fontSize: {
-  small: '12px',
-  medium: '14px',
-  default: '16px',
-  large: '18px',
+    small: '12px',
+    medium: '14px',
+    default: '16px',
+    large: '18px',
   },
   
   // Spacing
   spacing: {
-  xs: '4px',
-  sm: '8px',
-  md: '12px',
-  lg: '16px',
-  xl: '24px',
+    xs: '4px',
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+    xl: '24px',
   },
 };
 
@@ -58,10 +58,10 @@ type ThemeSpecificValue = {
 // Helper function to check if a value is theme-specific
 function isThemeSpecific(value: any): value is ThemeSpecificValue {
   return (
-  typeof value === 'object' && 
-  value !== null &&
-  'light' in value && 
-  'dark' in value
+    typeof value === 'object' && 
+    value !== null &&
+    'light' in value && 
+    'dark' in value
   );
 }
 

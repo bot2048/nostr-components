@@ -10,9 +10,9 @@ export default class NostrProfile extends HTMLElement {
   private rendered: boolean = false;
 
   private userProfile: NDKUserProfile = {
-  name: '',
-  image: '',
-  nip05: '',
+    name: '',
+    image: '',
+    nip05: '',
   };
 
   private theme: Theme = 'light';
@@ -44,8 +44,8 @@ export default class NostrProfile extends HTMLElement {
   private ndkUser: NDKUser;
 
   constructor() {
-  super();
-  this.attachShadow({ mode: 'open' });
+    super();
+    this.attachShadow({ mode: 'open' });
   }
 
   configureRelays = async () => {
@@ -61,84 +61,83 @@ export default class NostrProfile extends HTMLElement {
   }
 
   getNDKUser = async () => {
-  const npub = this.getAttribute('npub');
-  const nip05 = this.getAttribute('nip05');
-  const pubkey = this.getAttribute('pubkey');
+    const npub = this.getAttribute('npub');
+    const nip05 = this.getAttribute('nip05');
+    const pubkey = this.getAttribute('pubkey');
 
-  if(npub) {
-  return nostrService.getProfile(npub as string);
-  } else if(nip05) {
-  // For NIP-05 we need to use the NDK instance directly
-  const ndk = nostrService.getNDK();
-  return ndk.getUserFromNip05(nip05 as string);
-  } else if(pubkey) {
-  return nostrService.getUser({ pubkey: pubkey });
-  }
+    if(npub) {
+      return nostrService.getProfile(npub as string);
+    } else if(nip05) {
+      // For NIP-05 we need to use the NDK instance directly
+      const ndk = nostrService.getNDK();
+      return ndk.getUserFromNip05(nip05 as string);
+    } else if(pubkey) {
+      return nostrService.getUser({ pubkey: pubkey });
+    }
 
-  return null;
+    return null;
   }
 
   getUserProfile = async () => {
-  try {
-  this.isLoading = true;
+    try {
+      this.isLoading = true;
 
-  this.render();
+      this.render();
 
-  const user = await this.getNDKUser();
+      const user = await this.getNDKUser();
 
-  if(user?.npub) {
-  this.ndkUser = user;
+      if(user?.npub) {
+        this.ndkUser = user;
 
-  await user.fetchProfile();
+        await user.fetchProfile();
 
-  // Check if profile was fetched successfully
-  if (user.profile) {
-    this.userProfile = user.profile as NDKUserProfile;
+        // Check if profile was fetched successfully
+        if (user.profile) {
+          this.userProfile = user.profile as NDKUserProfile;
 
-    // Fetch stats only if profile exists
-    this.getProfileStats()
-    .then((stats) => {
-    this.isStatsError = false;
-    this.stats = stats;
-    })
-    .catch((err) => {
-    console.log(err);
-    this.isStatsError = true;
-    })
-    .finally(() => {
-    this.isStatsLoading = false;
-    this.render();
-    });
+          // Fetch stats only if profile exists
+          this.getProfileStats()
+            .then((stats) => {
+              this.isStatsError = false;
+              this.stats = stats;
+            })
+            .catch((err) => {
+              console.log(err);
+              this.isStatsError = true;
+            })
+            .finally(() => {
+              this.isStatsLoading = false;
+              this.render();
+            });
 
-    // Set default image only if profile exists but image is missing
-    if(!this.userProfile.image) {
-    this.userProfile.image = './assets/default_dp.png'
+          // Set default image only if profile exists but image is missing
+          if(!this.userProfile.image) {
+            this.userProfile.image = './assets/default_dp.png'
+          }
+          this.isError = false;
+        } else {
+          // Profile not found or fetch failed, use default image and clear stats
+          console.warn(`Could not fetch profile for user ${user.npub}`);
+          this.userProfile.image = './assets/default_dp.png'; 
+          this.userProfile.name = '';
+          this.userProfile.nip05 = '';
+          // Reset stats or show error state for stats?
+          this.stats = { follows: 0, followers: 0, notes: 0, replies: 0, zaps: 0, relays: 0 };
+          this.isStatsLoading = false; // No longer loading stats
+          this.isError = false; // Or true? Let's keep false, but log warning
+          this.isStatsError = true; // Indicate stats couldn't be loaded
+        }
+      } else {
+        throw new Error('Either npub or nip05 should be provided');
+      }
+
+    } catch(err) {
+      this.isError = true;
+      throw err;
+    } finally {
+      this.isLoading = false;
+      this.render();
     }
-    this.isError = false;
-  } else {
-    // Profile not found or fetch failed, use default image and clear stats
-    console.warn(`Could not fetch profile for user ${user.npub}`);
-    this.userProfile.image = './assets/default_dp.png'; 
-    this.userProfile.name = '';
-    this.userProfile.nip05 = '';
-    // Reset stats or show error state for stats?
-    this.stats = { follows: 0, followers: 0, notes: 0, replies: 0, zaps: 0, relays: 0 };
-    this.isStatsLoading = false; // No longer loading stats
-    this.isError = false; // Or true? Let's keep false, but log warning
-    this.isStatsError = true; // Indicate stats couldn't be loaded
-  }
-
-  } else {
-  throw new Error('Either npub or nip05 should be provided');
-  }
-
-  } catch(err) {
-  this.isError = true;
-  throw err;
-  } finally {
-  this.isLoading = false;
-  this.render();
-  }
   }
 
   getProfileStats = async (): Promise<any> => {

@@ -25,115 +25,115 @@ export default class NostrProfileBadge extends HTMLElement {
   private ndkUser: NDKUser;
 
   constructor() {
-  super();
+    super();
   }
 
   configureRelays = async () => {
-  const userRelays = this.getAttribute('relays');
+    const userRelays = this.getAttribute('relays');
 
-  if(userRelays) {
-  const relayArray = userRelays.split(',');
-  // Add each relay to the service
-  for (const relay of relayArray) {
-  await nostrService.addRelay(relay);
-  }
-  }
+    if(userRelays) {
+      const relayArray = userRelays.split(',');
+      // Add each relay to the service
+      for (const relay of relayArray) {
+        await nostrService.addRelay(relay);
+      }
+    }
   }
 
   getNDKUser = async () => {
-  const npub = this.getAttribute('npub');
-  const nip05 = this.getAttribute('nip05');
-  const pubkey = this.getAttribute('pubkey');
+    const npub = this.getAttribute('npub');
+    const nip05 = this.getAttribute('nip05');
+    const pubkey = this.getAttribute('pubkey');
 
-  if(npub) {
-  return nostrService.getProfile(npub);
-  } else if(nip05) {
-  // For NIP-05 we need to use the NDK instance directly
-  const ndk = nostrService.getNDK();
-  return ndk.getUserFromNip05(nip05);
-  } else if(pubkey) {
-  return nostrService.getUser({ pubkey: pubkey });
-  }
+    if(npub) {
+      return nostrService.getProfile(npub);
+    } else if(nip05) {
+      // For NIP-05 we need to use the NDK instance directly
+      const ndk = nostrService.getNDK();
+      return ndk.getUserFromNip05(nip05);
+    } else if(pubkey) {
+      return nostrService.getUser({ pubkey: pubkey });
+    }
 
-  return null;
+    return null;
   }
 
   getUserProfile = async () => {
-  try {
-  this.isLoading = true;
-  this.render();
+    try {
+      this.isLoading = true;
+      this.render();
 
-  const user = await this.getNDKUser();
+      const user = await this.getNDKUser();
 
-  if (user?.npub) {
-  this.ndkUser = user; 
+      if (user?.npub) {
+        this.ndkUser = user; 
 
-  // Check if profile was fetched successfully
-  if (user.profile) {
-    this.userProfile = user.profile as NDKUserProfile;
-    // Set default image only if profile exists but image is missing
-    if (!this.userProfile.image) {
-    this.userProfile.image = './assets/default_dp.png'
+        // Check if profile was fetched successfully
+        if (user.profile) {
+          this.userProfile = user.profile as NDKUserProfile;
+          // Set default image only if profile exists but image is missing
+          if (!this.userProfile.image) {
+            this.userProfile.image = './assets/default_dp.png'
+          }
+          this.isError = false;
+        } else {
+          // Profile not found initially, just log and ensure default image if needed.
+          // DO NOT reset name/nip05 here, as NDK might provide them later.
+          console.warn(`Could not fetch profile initially for user ${user.npub}`);
+          if (!this.userProfile.image) { // Only set default if absolutely no image is set yet
+            this.userProfile.image = './assets/default_dp.png';
+          }
+          // Consider setting this.isError = true if profile is truly expected but not found?
+          // For now, let's keep it false.
+          this.isError = false; // Keep consistent with previous logic for now
+        }
+
+      } else {
+        throw new Error('Either npub or nip05 should be provided');
+      }
+
+    } catch(err) {
+      this.isError = true;
+      throw err;
+    } finally {
+      this.isLoading = false;
+      this.render();
     }
-    this.isError = false;
-  } else {
-    // Profile not found initially, just log and ensure default image if needed.
-    // DO NOT reset name/nip05 here, as NDK might provide them later.
-    console.warn(`Could not fetch profile initially for user ${user.npub}`);
-    if (!this.userProfile.image) { // Only set default if absolutely no image is set yet
-    this.userProfile.image = './assets/default_dp.png';
-    }
-    // Consider setting this.isError = true if profile is truly expected but not found?
-    // For now, let's keep it false.
-    this.isError = false; // Keep consistent with previous logic for now
-  }
-
-  } else {
-  throw new Error('Either npub or nip05 should be provided');
-  }
-
-  } catch(err) {
-  this.isError = true;
-  throw err;
-  } finally {
-  this.isLoading = false;
-  this.render();
-  }
   }
 
   getTheme = async () => {
-  this.theme = 'light';
+    this.theme = 'light';
 
-  const userTheme = this.getAttribute('theme');
+    const userTheme = this.getAttribute('theme');
 
-  if(userTheme) {
-  const isValidTheme = ['light', 'dark'].includes(userTheme);
+    if(userTheme) {
+      const isValidTheme = ['light', 'dark'].includes(userTheme);
 
-  if(!isValidTheme) {
-  throw new Error(`Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`);
-  }
+      if(!isValidTheme) {
+        throw new Error(`Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`);
+      }
 
-  this.theme = userTheme as Theme;
-  }
+      this.theme = userTheme as Theme;
+    }
   }
 
   async connectedCallback() {
-  const onClick = this.getAttribute("onClick");
-  if(onClick !== null) {
-  this.onClick = window[onClick];
-  }
+    const onClick = this.getAttribute("onClick");
+    if(onClick !== null) {
+      this.onClick = window[onClick];
+    }
 
-  this.attachShadow({ mode: 'open' });
-  this.render();
+    this.attachShadow({ mode: 'open' });
+    this.render();
 
-  if (!this.rendered) {
-  await this.configureRelays();
-  await this.getTheme();
-  await nostrService.connectToNostr();
-  await this.getUserProfile();
+    if (!this.rendered) {
+      await this.configureRelays();
+      await this.getTheme();
+      await nostrService.connectToNostr();
+      await this.getUserProfile();
 
-  this.rendered = true;
-  }
+      this.rendered = true;
+    }
   }
 
   static get observedAttributes() {
@@ -141,30 +141,30 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   async attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-  if(name === 'relays') {
-  await this.configureRelays();
-  await nostrService.connectToNostr();
-  }
+    if(name === 'relays') {
+      await this.configureRelays();
+      await nostrService.connectToNostr();
+    }
 
-  if(['relays', 'npub', 'nip05'].includes(name)) {
-  // Possible property changes - relays, npub, nip05
-  // For all these changes, we have to fetch profile anyways
-  // TODO: Validate npub
-  this.getUserProfile();
-  }
+    if(['relays', 'npub', 'nip05'].includes(name)) {
+      // Possible property changes - relays, npub, nip05
+      // For all these changes, we have to fetch profile anyways
+      // TODO: Validate npub
+      this.getUserProfile();
+    }
 
-  if(name === "onClick") {
-  this.onClick = window[newValue];
-  }
+    if(name === "onClick") {
+      this.onClick = window[newValue];
+    }
 
-  if(name === 'theme') {
-  this.getTheme();
-  this.render();
-  }
+    if(name === 'theme') {
+      this.getTheme();
+      this.render();
+    }
 
-  if(['show-npub', 'show-follow'].includes(name)) {
-  this.render();
-  }
+    if(['show-npub', 'show-follow'].includes(name)) {
+      this.render();
+    }
   }
 
   disconnectedCallback() {
@@ -172,29 +172,29 @@ export default class NostrProfileBadge extends HTMLElement {
   }
 
   renderNpub() {
-  const npub = this.ndkUser?.npub;
-  const npubAttribute = this.getAttribute('npub');
-  const showNpub = this.getAttribute('show-npub');
+    const npub = this.ndkUser?.npub;
+    const npubAttribute = this.getAttribute('npub');
+    const showNpub = this.getAttribute('show-npub');
 
-  if(showNpub === 'false') {
-  return '';
-  }
+    if(showNpub === 'false') {
+      return '';
+    }
 
-  if(showNpub === null && this.userProfile.nip05) {
-  return '';
-  }
+    if(showNpub === null && this.userProfile.nip05) {
+      return '';
+    }
 
-  if(!npubAttribute && !this.ndkUser.npub) {
-  console.warn('Cannot use showNpub without providing a nPub');
-  return '';
-  }
+    if(!npubAttribute && !this.ndkUser.npub) {
+      console.warn('Cannot use showNpub without providing a nPub');
+      return '';
+    }
 
-  return `
-  <div class="npub-container">
-  <span class="npub">${maskNPub(npubAttribute || this.ndkUser.npub)}</span>
-  <span id="npub-copy" class="copy-button">&#x2398;</span>
-  </div>
-  `;
+    return `
+      <div class="npub-container">
+        <span class="npub">${maskNPub(npubAttribute || this.ndkUser.npub)}</span>
+        <span id="npub-copy" class="copy-button">&#x2398;</span>
+      </div>
+    `;
   }
 
   copy(string: string) {

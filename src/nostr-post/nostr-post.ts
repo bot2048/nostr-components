@@ -21,101 +21,103 @@ export default class NostrPost extends HTMLElement {
   private receivedData: boolean = false;
 
   private author: NDKUserProfile | null | undefined = {
-  name: '',
-  image: '',
-  nip05: '',
+    name: '',
+    image: '',
+    nip05: '',
   };
+
   private onClick: ((post: NDKEvent | null) => void) | null = null;
   private onAuthorClick: ((npub?: string, profile?: NDKUserProfile | null) => void) | null = null;
   private onMentionClick: ((username: string) => void) | null = null;
-  configureRelays = async () => {
-  const userRelays = this.getAttribute('relays');
 
-  if(userRelays) {
-  const relayArray = userRelays.split(',');
-  // Add each relay to the service
-  await Promise.all(relayArray.map((relay) => nostrService.addRelay(relay)));
-  }
-  }
+  configureRelays = async () => {
+    const userRelays = this.getAttribute('relays');
+
+    if (userRelays) {
+      const relayArray = userRelays.split(',');
+      // Add each relay to the service
+      await Promise.all(relayArray.map((relay) => nostrService.addRelay(relay)));
+    }
+  };
 
   getTheme = async () => {
-  this.theme = 'light';
+    this.theme = 'light';
 
-  const userTheme = this.getAttribute('theme');
+    const userTheme = this.getAttribute('theme');
 
-  if(userTheme) {
-  const isValidTheme = ['light', 'dark'].includes(userTheme);
+    if (userTheme) {
+      const isValidTheme = ['light', 'dark'].includes(userTheme);
 
-  if(!isValidTheme) {
-  throw new Error(`Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`);
-  }
+      if (!isValidTheme) {
+        throw new Error(`Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`);
+      }
 
-  this.theme = userTheme as Theme;
-  }
-  }
+      this.theme = userTheme as Theme;
+    }
+  };
 
   async connectedCallback() {
-  const onClick = this.getAttribute("onClick");
-  if(onClick !== null) {
-  this.onClick = window[onClick];
-  }
+    const onClick = this.getAttribute("onClick");
+    if (onClick !== null) {
+      this.onClick = window[onClick];
+    }
 
-  const onAuthorClick = this.getAttribute("onAuthorClick");
-  if(onAuthorClick !== null) {
-  this.onAuthorClick = window[onAuthorClick];
-  }
+    const onAuthorClick = this.getAttribute("onAuthorClick");
+    if (onAuthorClick !== null) {
+      this.onAuthorClick = window[onAuthorClick];
+    }
 
-  const onMentionClick = this.getAttribute("onMentionClick");
-  if(onMentionClick !== null) {
-  this.onMentionClick = window[onMentionClick];
-  }
+    const onMentionClick = this.getAttribute("onMentionClick");
+    if (onMentionClick !== null) {
+      this.onMentionClick = window[onMentionClick];
+    }
 
-  this.render();
+    this.render();
 
-  if (!this.rendered) {
-  await this.configureRelays();
-  await this.getTheme();
-  await nostrService.connectToNostr();
-  this.getPost();
+    if (!this.rendered) {
+      await this.configureRelays();
+      await this.getTheme();
+      await nostrService.connectToNostr();
+      this.getPost();
 
-  this.rendered = true;
-  }
+      this.rendered = true;
+    }
   }
 
   static get observedAttributes() {
-  return ['relays', 'id', 'theme', 'show-stats', 'onClick', 'onAuthorClick', 'onMentionClick'];
+    return ['relays', 'id', 'theme', 'show-stats', 'onClick', 'onAuthorClick', 'onMentionClick'];
   }
 
   async attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-  if(name === 'relays') {
-  await this.configureRelays();
-  await nostrService.connectToNostr();
-  }
+    if(name === 'relays') {
+      await this.configureRelays();
+      await nostrService.connectToNostr();
+    }
 
-  if(['relays', 'id'].includes(name)) {
-  this.getPost();
-  }
+    if(['relays', 'id'].includes(name)) {
+      this.getPost();
+    }
 
-  if(name === "onClick") {
-    this.onClick = window[newValue];
-  }
+    if(name === "onClick") {
+      this.onClick = window[newValue];
+    }
 
-  if(name === "onAuthorClick") {
-    this.onAuthorClick = window[newValue];
-  }
+    if(name === "onAuthorClick") {
+      this.onAuthorClick = window[newValue];
+    }
 
-  if(name === "onMentionClick") {
-    this.onMentionClick = window[newValue];
-  }
+    if(name === "onMentionClick") {
+      this.onMentionClick = window[newValue];
+    }
 
-  if(name === 'theme') {
-    this.getTheme();
-    this.render();
-  }
+    if(name === 'theme') {
+      this.getTheme();
+      this.render();
+    }
 
-  if(name === "show-stats") {
-    this.render();
-  }
+    if(name === "show-stats") {
+      this.render();
+    }
   }
 
   async getPost() {

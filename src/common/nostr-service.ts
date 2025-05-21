@@ -47,18 +47,18 @@ export class NostrService {
    * @param options Configuration options
    */
   constructor(options: NostrServiceOptions = {}) {
-  this.relayUrls = options.relays || DEFAULT_RELAYS;
-  
-  // Initialize NDK with provided relays
-  this.ndk = new NDK({
-  explicitRelayUrls: this.relayUrls,
-  signer: options.useNip07 ? new NDKNip07Signer() : undefined
-  });
+    this.relayUrls = options.relays || DEFAULT_RELAYS;
+    
+    // Initialize NDK with provided relays
+    this.ndk = new NDK({
+      explicitRelayUrls: this.relayUrls,
+      signer: options.useNip07 ? new NDKNip07Signer() : undefined
+    });
 
-  // Auto-connect if specified
-  if (options.autoConnect) {
-  this.connectToNostr();
-  }
+    // Auto-connect if specified
+    if (options.autoConnect) {
+      this.connectToNostr();
+    }
   }
 
   /**
@@ -66,29 +66,29 @@ export class NostrService {
    * @returns Promise that resolves when connected
    */
   async connectToNostr(): Promise<boolean> {
-  if (this._isConnected) {
-  return true;
-  }
+    if (this._isConnected) {
+      return true;
+    }
 
-  if (this._isConnecting) {
-  // Wait for existing connection attempt to complete
-  while (this._isConnecting) {
-  await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  return this._isConnected;
-  }
+    if (this._isConnecting) {
+      // Wait for existing connection attempt to complete
+      while (this._isConnecting) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return this._isConnected;
+    }
 
-  try {
-  this._isConnecting = true;
-  await this.ndk.connect();
-  this._isConnected = true;
-  return true;
-  } catch (error) {
-  console.error('Error connecting to Nostr', error);
-  return false;
-  } finally {
-  this._isConnecting = false;
-  }
+    try {
+      this._isConnecting = true;
+      await this.ndk.connect();
+      this._isConnected = true;
+      return true;
+    } catch (error) {
+      console.error('Error connecting to Nostr', error);
+      return false;
+    } finally {
+      this._isConnecting = false;
+    }
   }
 
   /**
@@ -114,7 +114,7 @@ export class NostrService {
   async addRelay(relayUrl: string): Promise<void> {
     if (!this.relayUrls.includes(relayUrl)) {
       this.relayUrls.push(relayUrl);
-  
+      
       // If `addExplicitRelay` exists, prefer it to avoid dropping state
       if (typeof this.ndk.addExplicitRelay === 'function') {
         this.ndk.addExplicitRelay(relayUrl);
@@ -126,7 +126,7 @@ export class NostrService {
           signer
         });
       }
-  
+      
       if (this._isConnected) {
         await this.ndk.connect(); // Ensure the new relay is connected
       }
