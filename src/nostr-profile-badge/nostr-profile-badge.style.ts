@@ -8,7 +8,7 @@ export function getProfileBadgeStyles(theme: Theme) {
   const borderColor = themeVariables.border[theme];
   const hoverColor = themeVariables.hover[theme];
   const borderRadius = themeVariables.borderRadius.medium;
-  
+
   return `
     <style>
       :host {

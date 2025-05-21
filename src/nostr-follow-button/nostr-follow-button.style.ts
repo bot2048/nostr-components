@@ -6,11 +6,12 @@ export function getFollowButtonStyles(theme: Theme, isLoading: boolean) {
   const backgroundColor = themeVariables.background[theme];
   const hoverBackgroundColor = themeVariables.hover[theme];
   const textColor = themeVariables.text[theme];
-  const borderStyle = theme === 'light' ? `1px solid ${themeVariables.border.light}` : 'none';
+  const borderStyle =
+    theme === 'light' ? `1px solid ${themeVariables.border.light}` : 'none';
   const borderRadius = themeVariables.borderRadius.medium;
   const fontSize = themeVariables.fontSize.default;
   const padding = `${themeVariables.spacing.md} ${themeVariables.spacing.lg}`;
-  
+
   return `
     <style>
       :host {

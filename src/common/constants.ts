@@ -7,7 +7,7 @@ export const DEFAULT_RELAYS = [
   'wss://nostr-pub.wellorder.net',
   'wss://njump.me',
   'wss://relay.getalby.com',
-  'wss://relay.primal.net'
+  'wss://relay.primal.net',
 ];
 
 export const MILLISATS_PER_SAT = 1000;

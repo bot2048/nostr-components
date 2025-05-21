@@ -8,7 +8,7 @@ export function getProfileStyles(theme: Theme) {
   const borderColor = themeVariables.border[theme];
   const accentColor = themeVariables.accent[theme];
   const borderRadius = themeVariables.borderRadius.medium;
-  
+
   return `
     <style>
       :host {

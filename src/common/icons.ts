@@ -3,7 +3,6 @@
  * This file contains SVG markup as template strings for easy reuse
  */
 
-
 /**
  * Reply icon (comment bubble)
  */

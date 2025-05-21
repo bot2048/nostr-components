@@ -1,10 +1,21 @@
-import { NDKEvent, NDKKind, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
+import {
+  NDKEvent,
+  NDKKind,
+  NDKUserProfile,
+  ProfilePointer,
+} from '@nostr-dev-kit/ndk';
 import { nip21 } from 'nostr-tools';
 import { nostrService } from '../common/nostr-service';
 import { Stats } from '../common/utils';
 import { Theme } from '../common/types';
 import { getPostStyles } from './nostr-post.style';
-import { replyIcon, likeIcon, zapIcon, repostIcon, errorIcon } from '../common/icons';
+import {
+  replyIcon,
+  likeIcon,
+  zapIcon,
+  repostIcon,
+  errorIcon,
+} from '../common/icons';
 import { sanitizeHtml, sanitizeText } from '../common/sanitize';
 
 export default class NostrPost extends HTMLElement {
@@ -19,6 +30,12 @@ export default class NostrPost extends HTMLElement {
   private embeddedPosts: Map<string, NDKEvent> = new Map();
 
   private receivedData: boolean = false;
+  private _listenersAttached: boolean = false;
+  private _eventListeners: Array<{
+    element: EventTarget;
+    type: string;
+    handler: EventListenerOrEventListenerObject;
+  }> = [];
 
   private author: NDKUserProfile | null | undefined = {
     name: '',
@@ -27,7 +44,9 @@ export default class NostrPost extends HTMLElement {
   };
 
   private onClick: ((post: NDKEvent | null) => void) | null = null;
-  private onAuthorClick: ((npub?: string, profile?: NDKUserProfile | null) => void) | null = null;
+  private onAuthorClick:
+    | ((npub?: string, profile?: NDKUserProfile | null) => void)
+    | null = null;
   private onMentionClick: ((username: string) => void) | null = null;
 
   configureRelays = async () => {
@@ -36,7 +55,7 @@ export default class NostrPost extends HTMLElement {
     if (userRelays) {
       const relayArray = userRelays.split(',');
       // Add each relay to the service
-      await Promise.all(relayArray.map((relay) => nostrService.addRelay(relay)));
+      await Promise.all(relayArray.map(relay => nostrService.addRelay(relay)));
     }
   };
 
@@ -49,7 +68,9 @@ export default class NostrPost extends HTMLElement {
       const isValidTheme = ['light', 'dark'].includes(userTheme);
 
       if (!isValidTheme) {
-        throw new Error(`Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`);
+        throw new Error(
+          `Invalid theme '${userTheme}'. Accepted values are 'light', 'dark'`
+        );
       }
 
       this.theme = userTheme as Theme;
@@ -57,17 +78,17 @@ export default class NostrPost extends HTMLElement {
   };
 
   async connectedCallback() {
-    const onClick = this.getAttribute("onClick");
+    const onClick = this.getAttribute('onClick');
     if (onClick !== null) {
       this.onClick = window[onClick];
     }
 
-    const onAuthorClick = this.getAttribute("onAuthorClick");
+    const onAuthorClick = this.getAttribute('onAuthorClick');
     if (onAuthorClick !== null) {
       this.onAuthorClick = window[onAuthorClick];
     }
 
-    const onMentionClick = this.getAttribute("onMentionClick");
+    const onMentionClick = this.getAttribute('onMentionClick');
     if (onMentionClick !== null) {
       this.onMentionClick = window[onMentionClick];
     }
@@ -85,440 +106,497 @@ export default class NostrPost extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['relays', 'id', 'theme', 'show-stats', 'onClick', 'onAuthorClick', 'onMentionClick'];
+    return [
+      'relays',
+      'id',
+      'theme',
+      'show-stats',
+      'onClick',
+      'onAuthorClick',
+      'onMentionClick',
+    ];
   }
 
-  async attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    if(name === 'relays') {
+  constructor() {
+    super();
+    // Bind methods to ensure 'this' context is preserved
+    this._addEventListener = this._addEventListener.bind(this);
+    this._removeAllEventListeners = this._removeAllEventListeners.bind(this);
+  }
+
+  async attributeChangedCallback(
+    name: string,
+    _oldValue: string,
+    newValue: string
+  ) {
+    if (name === 'relays') {
       await this.configureRelays();
       await nostrService.connectToNostr();
     }
 
-    if(['relays', 'id'].includes(name)) {
+    if (['relays', 'id'].includes(name)) {
       this.getPost();
     }
 
-    if(name === "onClick") {
+    if (name === 'onClick') {
       this.onClick = window[newValue];
     }
 
-    if(name === "onAuthorClick") {
+    if (name === 'onAuthorClick') {
       this.onAuthorClick = window[newValue];
     }
 
-    if(name === "onMentionClick") {
+    if (name === 'onMentionClick') {
       this.onMentionClick = window[newValue];
     }
 
-    if(name === 'theme') {
+    if (name === 'theme') {
       this.getTheme();
       this.render();
     }
 
-    if(name === "show-stats") {
+    if (name === 'show-stats') {
       this.render();
     }
   }
 
   async getPost() {
-  try {
-  this.isLoading = true;
-  this.render();
+    try {
+      this.isLoading = true;
+      this.render();
 
-  const noteId = this.getAttribute('id') || '';
-  const post = await nostrService.getPost(noteId);
+      const noteId = this.getAttribute('id') || '';
+      const post = await nostrService.getPost(noteId);
 
-  if(!this.receivedData) {
-    if(!post) {
-      this.isError = true;
-    } else {
-      this.receivedData = true;
-      this.post = post;
-    
-      const author = await this.post?.author.fetchProfile();
-      if(author) {
-        this.author = author;
-      }
-    
-      const shouldShowStats = this.getAttribute('show-stats');
-    
-      if(this.post && shouldShowStats) {
-        const stats = await nostrService.getPostStats(this.post.id);
-        if(stats) {
-          this.stats = stats;
+      if (!this.receivedData) {
+        if (!post) {
+          this.isError = true;
+        } else {
+          this.receivedData = true;
+          this.post = post;
+
+          const author = await this.post?.author.fetchProfile();
+          if (author) {
+            this.author = author;
+          }
+
+          const shouldShowStats = this.getAttribute('show-stats');
+
+          if (this.post && shouldShowStats) {
+            const stats = await nostrService.getPostStats(this.post.id);
+            if (stats) {
+              this.stats = stats;
+            }
+          }
+
+          this.isError = false;
         }
       }
-  
-    this.isError = false;
-  }
-  }
-  } catch(err) {
-  console.log(err)
-  this.isError = true;
-  throw err;
-  } finally {
-  this.isLoading = false;
-  this.render();
-  }
+    } catch (err) {
+      console.log(err);
+      this.isError = true;
+      throw err;
+    } finally {
+      this.isLoading = false;
+      this.render();
+    }
   }
 
   #_onPostClick() {
+    if (this.isError) {
+      return;
+    }
 
-  if(this.isError) {
-  return;
-  }
+    if (this.onClick !== null && typeof this.onClick === 'function') {
+      this.onClick(this.post);
+      return;
+    }
 
-  if(this.onClick !== null && typeof this.onClick === 'function')  {
-  this.onClick(this.post);
-  return;
-  }
+    let id = this.getAttribute('id');
 
-  let id = this.getAttribute('id');
-
-  window.open(`https://njump.me/${id}`, '_blank');
+    window.open(`https://njump.me/${id}`, '_blank');
   }
 
   #_onAuthorClick() {
+    if (this.isError) {
+      return;
+    }
 
-  if(this.isError) {
-  return;
-  }
+    if (
+      this.onAuthorClick !== null &&
+      typeof this.onAuthorClick === 'function'
+    ) {
+      this.onAuthorClick(this.post?.author.npub, this.author);
+      return;
+    }
 
-  if(this.onAuthorClick !== null && typeof this.onAuthorClick === 'function')  {
-  this.onAuthorClick(this.post?.author.npub, this.author);
-  return;
-  }
-
-  window.open(`https://njump.me/${this.post?.author.npub}`, '_blank');
+    window.open(`https://njump.me/${this.post?.author.npub}`, '_blank');
   }
 
   #_onMentionClick(username: string, event: Event) {
-  event.preventDefault();
-  event.stopPropagation();
-  
-  // Custom mention handler if provided
-  if(this.onMentionClick !== null && typeof this.onMentionClick === 'function') {
-    this.onMentionClick(username);
-  return;
-  }
-  
-  // Default behavior: try to find user with this username
-  window.open(`https://njump.me/search?q=${encodeURIComponent('@' + username)}`, '_blank');
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Custom mention handler if provided
+    if (
+      this.onMentionClick !== null &&
+      typeof this.onMentionClick === 'function'
+    ) {
+      this.onMentionClick(username);
+      return;
+    }
+
+    // Default behavior: try to find user with this username
+    window.open(
+      `https://njump.me/search?q=${encodeURIComponent('@' + username)}`,
+      '_blank'
+    );
   }
 
   async parseText(text: string) {
+    let textContent = text;
+    let embeddedNotes: { id: string; position: number }[] = [];
 
-  let textContent = text;
-  let embeddedNotes: {id: string, position: number}[] = [];
+    // First capture embedded note references before other processing
+    // Example note1abcdef... or nostr:note1abcdef...
+    const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g;
+    const noteMatches = [...textContent.matchAll(noteRegex)];
 
-  // First capture embedded note references before other processing
-  // Example note1abcdef... or nostr:note1abcdef...
-  const noteRegex = /(nostr:)?(note[a-zA-Z0-9]{59,60})/g;
-  const noteMatches = [...textContent.matchAll(noteRegex)];
-  
-  for (const match of noteMatches) {
-  const fullMatch = match[0];
-  const noteId = match[2];
-  const position = match.index || 0;
-  
-  // Store the note ID and its position for later processing
-  embeddedNotes.push({
-  id: noteId,
-  position: position
-  });
-  
-  // Fetch the embedded post
-  try {
-  if (!this.embeddedPosts.has(noteId)) {
-    const embeddedPost = await nostrService.getPost(noteId);
-    if (embeddedPost) {
-    this.embeddedPosts.set(noteId, embeddedPost);
+    for (const match of noteMatches) {
+      const fullMatch = match[0];
+      const noteId = match[2];
+      const position = match.index || 0;
+
+      // Store the note ID and its position for later processing
+      embeddedNotes.push({
+        id: noteId,
+        position: position,
+      });
+
+      // Fetch the embedded post
+      try {
+        if (!this.embeddedPosts.has(noteId)) {
+          const embeddedPost = await nostrService.getPost(noteId);
+          if (embeddedPost) {
+            this.embeddedPosts.set(noteId, embeddedPost);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to fetch embedded post ${noteId}:`, error);
+      }
+
+      // Remove the note reference from the text to prevent @ symbols being added
+      textContent = textContent.replace(fullMatch, '');
     }
-  }
-  } catch (error) {
-  console.error(`Failed to fetch embedded post ${noteId}:`, error);
-  }
-  
-  // Remove the note reference from the text to prevent @ symbols being added
-  textContent = textContent.replace(fullMatch, '');
-  }
 
-  // Handle Nostr URI schema for mentions
-  const nostrURISchemaMatches = textContent.matchAll(new RegExp(nip21.NOSTR_URI_REGEX, 'g'));
-  for(let match of nostrURISchemaMatches) {
-  const parsedNostrURI = nip21.parse(match[0]);
-  const decordedData = parsedNostrURI.decoded.data;
+    // Handle Nostr URI schema for mentions
+    const nostrURISchemaMatches = textContent.matchAll(
+      new RegExp(nip21.NOSTR_URI_REGEX, 'g')
+    );
+    for (let match of nostrURISchemaMatches) {
+      const parsedNostrURI = nip21.parse(match[0]);
+      const decordedData = parsedNostrURI.decoded.data;
 
-  let pubkey = '';
-  if(typeof decordedData === "string") {
-  pubkey = decordedData;
-  } else {
-  pubkey = (decordedData as ProfilePointer).pubkey;
-  }
+      let pubkey = '';
+      if (typeof decordedData === 'string') {
+        pubkey = decordedData;
+      } else {
+        pubkey = (decordedData as ProfilePointer).pubkey;
+      }
 
-  const user = await nostrService.getUser({pubkey: pubkey}).fetchProfile();
-  const name = user?.displayName || '';
+      const user = await nostrService
+        .getUser({ pubkey: pubkey })
+        .fetchProfile();
+      const name = user?.displayName || '';
 
-  textContent = textContent.replace(match[0], `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`);
-  }
+      textContent = textContent.replace(
+        match[0],
+        `<a href="https://njump.me/${parsedNostrURI.value}" target="_blank">@${name}</a>`
+      );
+    }
 
-  // Handle Twitter-like mentions (@username)
-  const mentionRegex = /(\s|^)@(\w+)/g;
-  const mentionMatches = [...textContent.matchAll(mentionRegex)];
-  
-  for (const match of mentionMatches) {
-  const fullMatch = match[0];
-  const username = match[2];
-  
-  // Replace with styled mention
-  textContent = textContent.replace(
-  fullMatch, 
-  `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
-  );
-  }
-  
-  // Handle URLs
-  const regex = /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
-  const matches = textContent.match(regex);
-  const result: any[] = [];
+    // Handle Twitter-like mentions (@username)
+    const mentionRegex = /(\s|^)@(\w+)/g;
+    const mentionMatches = [...textContent.matchAll(mentionRegex)];
 
-  if (matches) {
-  let lastIndex = 0;
-  for (const match of matches) {
-  const startIndex = textContent.indexOf(match, lastIndex);
-  const endIndex = startIndex + match.length;
-  
-  if (startIndex > lastIndex) {
-    result.push({ type: 'text', value: textContent.substring(lastIndex, startIndex) });
-  }
-  
-  const url = new URL(match);
-  let type;
-  
-  if (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.jpeg') || url.pathname.endsWith('.png')) {
-    type = 'image';
-  } else if (url.pathname.endsWith('.gif')) {
-    type = 'gif';
-  } else if (url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webm')) {
-    type = 'video';
-  } else {
-    type = 'link';
-  }
-  
-  result.push({ type, value: match });
-  
-  lastIndex = endIndex;
-  }
-  
-  if (lastIndex < textContent.length) {
-  result.push({ type: 'text', value: textContent.substring(lastIndex) });
-  }
-  } else {
-  result.push({ type: 'text', value: textContent });
-  }
+    for (const match of mentionMatches) {
+      const fullMatch = match[0];
+      const username = match[2];
 
-  // Add embedded notes to the result
-  if (embeddedNotes.length > 0) {
-  // Sort by position in descending order to avoid affecting earlier positions
-  embeddedNotes.sort((a, b) => b.position - a.position);
-  
-  for (const note of embeddedNotes) {
-  result.push({ 
-    type: 'embedded-note', 
-    noteId: note.id
-  });
-  }
-  }
-  
-  return result;
+      // Replace with styled mention
+      textContent = textContent.replace(
+        fullMatch,
+        `${match[1]}<span class="nostr-mention" data-username="${username}">@${username}</span>`
+      );
+    }
+
+    // Handle URLs
+    const regex =
+      /(https:\/\/(?!njump\.me)[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    const matches = textContent.match(regex);
+    const result: any[] = [];
+
+    if (matches) {
+      let lastIndex = 0;
+      for (const match of matches) {
+        const startIndex = textContent.indexOf(match, lastIndex);
+        const endIndex = startIndex + match.length;
+
+        if (startIndex > lastIndex) {
+          result.push({
+            type: 'text',
+            value: textContent.substring(lastIndex, startIndex),
+          });
+        }
+
+        const url = new URL(match);
+        let type;
+
+        if (
+          url.pathname.endsWith('.jpg') ||
+          url.pathname.endsWith('.jpeg') ||
+          url.pathname.endsWith('.png')
+        ) {
+          type = 'image';
+        } else if (url.pathname.endsWith('.gif')) {
+          type = 'gif';
+        } else if (
+          url.pathname.endsWith('.mp4') ||
+          url.pathname.endsWith('.webm')
+        ) {
+          type = 'video';
+        } else {
+          type = 'link';
+        }
+
+        result.push({ type, value: match });
+
+        lastIndex = endIndex;
+      }
+
+      if (lastIndex < textContent.length) {
+        result.push({ type: 'text', value: textContent.substring(lastIndex) });
+      }
+    } else {
+      result.push({ type: 'text', value: textContent });
+    }
+
+    // Add embedded notes to the result at their original positions
+    if (embeddedNotes.length > 0) {
+      // Sort by position in descending order to ensure correct insertion
+      embeddedNotes.sort((a, b) => b.position - a.position);
+
+      for (const note of embeddedNotes) {
+        // Insert at the correct position while maintaining the order of other elements
+        result.splice(note.position, 0, {
+          type: 'embedded-note',
+          noteId: note.id,
+        });
+      }
+    }
+
+    return result;
   }
 
   async replaceEmbeddedPostPlaceholders() {
-  const placeholders = this.querySelectorAll('.embedded-post-placeholder');
-  
-  for (const placeholder of placeholders) {
-  const noteId = placeholder.getAttribute('data-note-id');
-  if (noteId) {
-  const embedHtml = await this.renderEmbeddedPost(noteId);
-  
-  // Create a temporary container
-  const temp = document.createElement('div');
-  temp.innerHTML = embedHtml;
-  
-  // Replace the placeholder with the embedded post
-  placeholder.parentNode?.replaceChild(temp.firstElementChild!, placeholder);
-  
-  // Add click handlers to the author elements in this embedded post
-  const embeddedPost = temp.firstElementChild;
-  const authorAvatar = embeddedPost?.querySelector('.embedded-author-avatar');
-  const authorInfo = embeddedPost?.querySelector('.embedded-author-info');
-  
-  if (embeddedPost && authorAvatar && authorInfo) {
-    const noteId = embeddedPost.getAttribute('data-note-id');
-    if (noteId && this.embeddedPosts.has(noteId)) {
-    const post = this.embeddedPosts.get(noteId)!;
-    const authorNpub = post.author.npub;
-    
-    const handleAuthorClick = (e: Event) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Open the author's profile
-    window.open(`https://njump.me/${authorNpub}`, '_blank');
-    };
-    
-    authorAvatar.addEventListener('click', handleAuthorClick);
-    authorInfo.addEventListener('click', handleAuthorClick);
+    const placeholders = this.querySelectorAll('.embedded-post-placeholder');
+
+    for (const placeholder of placeholders) {
+      const noteId = placeholder.getAttribute('data-note-id');
+      if (noteId) {
+        const embedHtml = await this.renderEmbeddedPost(noteId);
+
+        // Create a temporary container
+        const temp = document.createElement('div');
+        temp.innerHTML = embedHtml;
+
+        // Replace the placeholder with the embedded post
+        placeholder.parentNode?.replaceChild(
+          temp.firstElementChild!,
+          placeholder
+        );
+
+        // Add click handlers to the author elements in this embedded post
+        const embeddedPost = temp.firstElementChild;
+        const authorAvatar = embeddedPost?.querySelector(
+          '.embedded-author-avatar'
+        );
+        const authorInfo = embeddedPost?.querySelector('.embedded-author-info');
+
+        if (embeddedPost && authorAvatar && authorInfo) {
+          const noteId = embeddedPost.getAttribute('data-note-id');
+          if (noteId && this.embeddedPosts.has(noteId)) {
+            const post = this.embeddedPosts.get(noteId)!;
+            const authorNpub = post.author.npub;
+
+            const handleAuthorClick = (e: Event) => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              // Open the author's profile
+              window.open(`https://njump.me/${authorNpub}`, '_blank');
+            };
+
+            authorAvatar.addEventListener('click', handleAuthorClick);
+            authorInfo.addEventListener('click', handleAuthorClick);
+          }
+        }
+      }
     }
-  }
-  }
-  }
   }
 
   // TODO: Fix types
   renderContent = (content: any[]) => {
-  const html: string[] = [];
-  let mediaCount = 0;
-  let textBuffer = '';
+    const html: string[] = [];
+    let mediaCount = 0;
+    let textBuffer = '';
 
-  for (const item of content) {
-  if (item.type === 'text') {
-  // Sanitize text content to prevent XSS
-  textBuffer += sanitizeText(item.value);
-  } else if (item.type === 'embedded-note') {
-  // Handle embedded note placeholder
-  if (textBuffer) {
-    html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
-    textBuffer = '';
-  }
-  
-  const safeNoteId = sanitizeText(item.noteId);
-  html.push(`<div class="embedded-post-placeholder" data-note-id="${safeNoteId}"></div>`);
-  } else {
-  if (textBuffer) {
-    html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
-    textBuffer = '';
-  }
+    for (const item of content) {
+      if (item.type === 'text') {
+        // Sanitize text content to prevent XSS
+        textBuffer += sanitizeText(item.value);
+      } else if (item.type === 'embedded-note') {
+        // Handle embedded note placeholder
+        if (textBuffer) {
+          html.push(
+            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+          );
+          textBuffer = '';
+        }
 
-  switch (item.type) {
-    case 'image':
-    {
-      // Sanitize image URL
-      const safeImgSrc = sanitizeText(item.value);
-      html.push(`<img width="100%" src="${safeImgSrc}" alt="Image">`);
-      mediaCount++;
-      break;
+        const safeNoteId = sanitizeText(item.noteId);
+        html.push(
+          `<div class="embedded-post-placeholder" data-note-id="${safeNoteId}"></div>`
+        );
+      } else {
+        if (textBuffer) {
+          html.push(
+            `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+          );
+          textBuffer = '';
+        }
+
+        switch (item.type) {
+          case 'image': {
+            // Sanitize image URL
+            const safeImgSrc = sanitizeText(item.value);
+            html.push(`<img width="100%" src="${safeImgSrc}" alt="Image">`);
+            mediaCount++;
+            break;
+          }
+          case 'gif': {
+            // Sanitize gif URL
+            const safeGifSrc = sanitizeText(item.value);
+            html.push(`<img width="100%" src="${safeGifSrc}" alt="GIF">`);
+            mediaCount++;
+            break;
+          }
+          case 'video': {
+            // Sanitize video URL
+            const safeVideoSrc = sanitizeText(item.value);
+            html.push(
+              `<video width="100%" src="${safeVideoSrc}" controls></video>`
+            );
+            mediaCount++;
+            break;
+          }
+          case 'link': {
+            // Sanitize link URL and text
+            const safeLinkHref = sanitizeText(item.value);
+            const safeLinkText = sanitizeText(item.value);
+            html.push(`<a href="${safeLinkHref}">${safeLinkText}</a>`);
+            break;
+          }
+        }
+      }
     }
-    case 'gif':
-    {
-      // Sanitize gif URL
-      const safeGifSrc = sanitizeText(item.value);
-      html.push(`<img width="100%" src="${safeGifSrc}" alt="GIF">`);
-      mediaCount++;
-      break;
+
+    if (textBuffer) {
+      html.push(
+        `<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`
+      );
     }
-    case 'video':
-    {
-      // Sanitize video URL
-      const safeVideoSrc = sanitizeText(item.value);
-      html.push(`<video width="100%" src="${safeVideoSrc}" controls></video>`);
-      mediaCount++;
-      break;
-    }
-    case 'link':
-    {
-      // Sanitize link URL and text
-      const safeLinkHref = sanitizeText(item.value);
-      const safeLinkText = sanitizeText(item.value);
-      html.push(`<a href="${safeLinkHref}">${safeLinkText}</a>`);
-      break;
-    }
-  }
-  }
-  }
-  
-  if (textBuffer) {
-  html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
-  }
-  
-  return html.join('');
-  }
+
+    return html.join('');
+  };
 
   async renderEmbeddedPost(noteId: string) {
     if (!this.embeddedPosts.has(noteId)) {
-      return sanitizeHtml(`<div class="embedded-post-error">Unable to load embedded post</div>`);
+      return sanitizeHtml(
+        `<div class="embedded-post-error">Unable to load embedded post</div>`
+      );
     }
 
-  const post = this.embeddedPosts.get(noteId)!;
-  
-  // Fetch author profile
-  let authorProfile: NDKUserProfile | null = null;
-  try {
-  authorProfile = await post.author.fetchProfile();
-  } catch (error) {
-  console.error("Failed to fetch author profile for embedded post:", error);
-  }
+    const post = this.embeddedPosts.get(noteId)!;
 
-  // Format date
-  const date = new Date(post.created_at * 1000).toLocaleDateString('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-  });
-
-  // Process content for media and proper line breaks
-  let processedContent = '';
-  let mediaHtml = '';
-  let mediaItems: {type: string, url: string}[] = [];
-  
-  // Extract media from content if present
-  const urlRegex = /(https:\/\/[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
-  const urlMatches = post.content.match(urlRegex);
-  let contentWithoutMedia = post.content;
-  
-  if (urlMatches) {
-  for (const url of urlMatches) {
-  try {
-    // Check if this is an image or video
-    if (url.match(/\.(jpeg|jpg|gif|png)$/i)) {
-    mediaItems.push({type: 'image', url: url});
-    // Remove the URL from content to avoid duplication
-    contentWithoutMedia = contentWithoutMedia.replace(url, ' ');
-    } else if (url.match(/\.(mp4|webm)$/i)) {
-    mediaItems.push({type: 'video', url: url});
-    // Remove the URL from content to avoid duplication
-    contentWithoutMedia = contentWithoutMedia.replace(url, ' ');
+    // Fetch author profile
+    let authorProfile: NDKUserProfile | null = null;
+    try {
+      authorProfile = await post.author.fetchProfile();
+    } catch (error) {
+      console.error('Failed to fetch author profile for embedded post:', error);
     }
-  } catch (error) {
-    console.error("Error processing URL in embedded post:", error);
-  }
-  }
-  }
-  
-  // Process remaining content with proper line breaks
-  let content = contentWithoutMedia.trim();
-  if (content.length > 280) {
-  content = content.substring(0, 277) + '...';
-  }
-  
-  // Replace newlines with <br> tags
-  processedContent = content.replace(/\n/g, '<br>');
 
-  // Generate HTML for media - render each media item vertically one after another
-  if (mediaItems.length > 0) {
-  mediaHtml = `<div class="embedded-media-list">`;
-  for (const item of mediaItems) {
-  if (item.type === 'image') {
-    mediaHtml += `<div class="embedded-media-item"><img src="${item.url}" alt="Embedded image" loading="lazy" /></div>`;
-  } else if (item.type === 'video') {
-    mediaHtml += `<div class="embedded-media-item"><video src="${item.url}" controls preload="none"></video></div>`;
-  }
-  }
-  mediaHtml += `</div>`;
-  }
+    // Format date
+    const date = new Date(post.created_at * 1000).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
 
-  // Construct the HTML for the embedded post
-  const embeddedPostHtml = `
+    // Process content for media and proper line breaks
+    let processedContent = '';
+    let mediaHtml = '';
+    let mediaItems: { type: string; url: string }[] = [];
+
+    // Extract media from content if present
+    const urlRegex = /(https:\/\/[\w.-]+(?:\.[\w.-]+)+(?:\/[^\s]*)?)/g;
+    const urlMatches = post.content.match(urlRegex);
+    let contentWithoutMedia = post.content;
+
+    if (urlMatches) {
+      for (const url of urlMatches) {
+        try {
+          // Check if this is an image or video
+          if (url.match(/\.(jpeg|jpg|gif|png)$/i)) {
+            mediaItems.push({ type: 'image', url: url });
+            // Remove the URL from content to avoid duplication
+            contentWithoutMedia = contentWithoutMedia.replace(url, ' ');
+          } else if (url.match(/\.(mp4|webm)$/i)) {
+            mediaItems.push({ type: 'video', url: url });
+            // Remove the URL from content to avoid duplication
+            contentWithoutMedia = contentWithoutMedia.replace(url, ' ');
+          }
+        } catch (error) {
+          console.error('Error processing URL in embedded post:', error);
+        }
+      }
+    }
+
+    // Process remaining content with proper line breaks
+    let content = contentWithoutMedia.trim();
+    if (content.length > 280) {
+      content = content.substring(0, 277) + '...';
+    }
+
+    // Replace newlines with <br> tags
+    processedContent = content.replace(/\n/g, '<br>');
+
+    // Generate HTML for media - render each media item vertically one after another
+    if (mediaItems.length > 0) {
+      mediaHtml = `<div class="embedded-media-list">`;
+      for (const item of mediaItems) {
+        if (item.type === 'image') {
+          mediaHtml += `<div class="embedded-media-item"><img src="${item.url}" alt="Embedded image" loading="lazy" /></div>`;
+        } else if (item.type === 'video') {
+          mediaHtml += `<div class="embedded-media-item"><video src="${item.url}" controls preload="none"></video></div>`;
+        }
+      }
+      mediaHtml += `</div>`;
+    }
+
+    // Construct the HTML for the embedded post
+    const embeddedPostHtml = `
   <div class="embedded-post" data-note-id="${noteId}">
   <div class="embedded-post-header">
     <div class="embedded-author-avatar" style="cursor: pointer;">
@@ -536,83 +614,123 @@ export default class NostrPost extends HTMLElement {
   </div>
   </div>
   `;
-  
-  // Sanitize the HTML before returning it to prevent XSS attacks
-  return sanitizeHtml(embeddedPostHtml);
+
+    // Sanitize the HTML before returning it to prevent XSS attacks
+    return sanitizeHtml(embeddedPostHtml);
+  }
+
+  private _addEventListener(
+    element: EventTarget,
+    type: string,
+    handler: EventListenerOrEventListenerObject,
+    options?: AddEventListenerOptions
+  ) {
+    element.addEventListener(type, handler, options);
+    this._eventListeners.push({ element, type, handler });
+  }
+
+  private _removeAllEventListeners() {
+    this._eventListeners.forEach(({ element, type, handler }) => {
+      element.removeEventListener(type, handler);
+    });
+    this._eventListeners = [];
+    this._listenersAttached = false;
   }
 
   setupMentionClickHandlers() {
-  // Add direct click handlers to each mention element
-  const mentions = this.querySelectorAll('.nostr-mention');
-  mentions.forEach(mention => {
-  mention.addEventListener('click', (event) => {
-  const username = mention.getAttribute('data-username') || mention.textContent?.slice(1);
-  if (username) {
-    this.#_onMentionClick(username, event);
-  }
-  });
-  });
-  
-  // Also add direct click handlers to the main post author header for the main post
-  const authorAvatar = this.querySelector('.post-header-left');
-  const authorInfo = this.querySelector('.post-header-middle');
-  
-  if (authorAvatar) {
-  authorAvatar.addEventListener('click', (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  this.#_onAuthorClick();
-  });
-  }
-  
-  if (authorInfo) {
-  authorInfo.addEventListener('click', (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  this.#_onAuthorClick();
-  });
+    // Skip if listeners are already attached
+    if (this._listenersAttached) {
+      return;
+    }
+
+    // Add click handlers to all mention links
+    const mentionLinks = this.querySelectorAll('.nostr-mention');
+    mentionLinks.forEach(link => {
+      const handler = (event: Event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const username = link.getAttribute('data-mention');
+        if (username) {
+          this.#_onMentionClick(username, event);
+        }
+      };
+      this._addEventListener(link, 'click', handler);
+    });
+
+    // Also add direct click handlers to the main post author header for the main post
+    const authorAvatar = this.querySelector('.post-header-left');
+    const authorInfo = this.querySelector('.post-header-middle');
+
+    if (authorAvatar) {
+      const handler = (event: Event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.#_onAuthorClick();
+      };
+      this._addEventListener(authorAvatar, 'click', handler);
+    }
+
+    if (authorInfo) {
+      const handler = (event: Event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.#_onAuthorClick();
+      };
+      this._addEventListener(authorInfo, 'click', handler);
+    }
+
+    // Add click handler for the entire post
+    const postContainer = this.querySelector('.post-container');
+    if (postContainer) {
+      const handler = (event: Event) => {
+        // Only trigger post click if the click wasn't on a child with its own handler
+        if (
+          event.target === postContainer ||
+          ((event.target as HTMLElement).closest('.post-body') &&
+            !(event.target as HTMLElement).closest(
+              'a, .nostr-mention, video, img'
+            ))
+        ) {
+          this.#_onPostClick();
+        }
+      };
+      this._addEventListener(postContainer, 'click', handler);
+    }
+
+    // Ensure links, videos, and images don't trigger the post click
+    const clickableElements = this.querySelectorAll('a, video, img');
+    clickableElements.forEach(element => {
+      const handler = (event: Event) => {
+        event.stopPropagation();
+      };
+      this._addEventListener(element, 'click', handler);
+    });
+
+    this._listenersAttached = true;
   }
 
-  // Add click handler for the entire post
-  const postContainer = this.querySelector('.post-container');
-  if (postContainer) {
-  postContainer.addEventListener('click', (event) => {
-  // Only trigger post click if the click wasn't on a child with its own handler
-  if (event.target === postContainer || 
-    (event.target as HTMLElement).closest('.post-body') && 
-    !(event.target as HTMLElement).closest('a, .nostr-mention, video, img')) {
-    this.#_onPostClick();
-  }
-  });
-  }
-
-  // Ensure links, videos, and images don't trigger the post click
-  const clickableElements = this.querySelectorAll('a, video, img');
-  clickableElements.forEach(element => {
-  element.addEventListener('click', (event) => {
-  event.stopPropagation();
-  });
-  });
+  disconnectedCallback() {
+    this._removeAllEventListeners();
   }
 
   async render() {
-    const content = this.post?.content ||  '';
+    const content = this.post?.content || '';
     const parsedContent = await this.parseText(content);
     // Sanitize HTML to prevent XSS attacks
     const htmlToRender = sanitizeHtml(this.renderContent(parsedContent));
 
-  let date = '';
-  if(this.post && this.post.created_at) {
-  date = new Date(this.post.created_at * 1000).toLocaleDateString('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-  });
-  }
+    let date = '';
+    if (this.post && this.post.created_at) {
+      date = new Date(this.post.created_at * 1000).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
 
-  const shouldShowStats = this.getAttribute('show-stats') === "true"; // Check attribute directly
+    const shouldShowStats = this.getAttribute('show-stats') === 'true'; // Check attribute directly
 
-  this.innerHTML = `
+    this.innerHTML = `
   ${getPostStyles(this.theme)}
   <style>
   .nostr-mention {
@@ -717,33 +835,33 @@ export default class NostrPost extends HTMLElement {
     <div class="post-header-left">
     <div class="author-picture">
     ${
-    this.isLoading
-    ? '<div style="width: 35px; height: 35px; border-radius: 50%;" class="skeleton"></div>'
-    : this.isError
-      ? ``
-      : `<img src="${this.author?.image}" />`
+      this.isLoading
+        ? '<div style="width: 35px; height: 35px; border-radius: 50%;" class="skeleton"></div>'
+        : this.isError
+          ? ``
+          : `<img src="${this.author?.image}" />`
     }
     </div>
     </div>
     <div class="post-header-middle">
     ${
-    this.isLoading
-    ? `
+      this.isLoading
+        ? `
     <div style="width: 70%; height: 10px; border-radius: 10px;" class="skeleton"></div>
     <div style="width: 80%; height: 8px; border-radius: 10px; margin-top: 5px;" class="skeleton"></div>
     `
-    : this.isError
-    ? ''
-    : `
+        : this.isError
+          ? ''
+          : `
       ${
-      this.author?.displayName
-      ? `<span class="author-name">${this.author?.displayName}</span>`
-      : ''
+        this.author?.displayName
+          ? `<span class="author-name">${this.author?.displayName}</span>`
+          : ''
       }
       ${
-      this.author?.nip05
-      ? `<span class="author-username">${this.author?.nip05}</span>`
-      : ''
+        this.author?.nip05
+          ? `<span class="author-username">${this.author?.nip05}</span>`
+          : ''
       }
       
     `
@@ -751,25 +869,25 @@ export default class NostrPost extends HTMLElement {
     </div>
     <div class="post-header-right">
     ${
-    this.isLoading
-    ? '<div style="width: 100px; height: 10px; border-radius: 10px;" class="skeleton"></div>'
-    : this.isError
-    ? ''
-    : `<span class="post-date">${date}</span>`
+      this.isLoading
+        ? '<div style="width: 100px; height: 10px; border-radius: 10px;" class="skeleton"></div>'
+        : this.isError
+          ? ''
+          : `<span class="post-date">${date}</span>`
     }
     </div>
   </div>
 
   <div class="post-body">
     ${
-    this.isLoading
-    ? `
+      this.isLoading
+        ? `
     <div style="width: 100%; height: 10px; border-radius: 10px; margin-bottom: 15px;" class="skeleton"></div>
     <div style="width: 100%; height: 10px; border-radius: 10px; margin-bottom: 15px;" class="skeleton"></div>
     <div style="width: 30%; height: 10px; border-radius: 10px;" class="skeleton"></div>
     `
-    : this.isError
-    ? `
+        : this.isError
+          ? `
       <div class='error-container'>
       <div class="error">${errorIcon}</div>
       <span class="error-text">Unable to load post</span>
@@ -778,19 +896,19 @@ export default class NostrPost extends HTMLElement {
       <small class="error-text" style="font-weight: normal">Please check console for more information</small>
       </div>
     `
-    : htmlToRender
+          : htmlToRender
     }
   </div>
 
 
   ${
     !shouldShowStats
-    ? ''
-    : `
+      ? ''
+      : `
     <div class="post-footer">
     ${
-    this.isLoading
-    ? `
+      this.isLoading
+        ? `
     <div class='stats-container'>
       <div class="stat">
       <div style="width: 42px; height: 20px; border-radius: 4px;" class="skeleton"></div>
@@ -805,9 +923,9 @@ export default class NostrPost extends HTMLElement {
       </div>
       </div>
     `
-    : this.isError || this.stats == null
-    ? ''
-    : `
+        : this.isError || this.stats == null
+          ? ''
+          : `
       <div class='stats-container'>
       <div class="stat">
       ${replyIcon}
@@ -827,18 +945,18 @@ export default class NostrPost extends HTMLElement {
   </div>
   `;
 
-  // Process embedded posts after rendering the main content
-  await this.replaceEmbeddedPostPlaceholders();
-  
-  // Add click handlers for mentions and author after rendering everything
-  this.setupMentionClickHandlers();
+    // Process embedded posts after rendering the main content
+    await this.replaceEmbeddedPostPlaceholders();
 
-  // Add cursor pointer to post body to indicate it's clickable
-  const postBody = this.querySelector('.post-body');
-  if (postBody) {
-  postBody.setAttribute('style', 'cursor: pointer;');
-  }
+    // Add click handlers for mentions and author after rendering everything
+    this.setupMentionClickHandlers();
+
+    // Add cursor pointer to post body to indicate it's clickable
+    const postBody = this.querySelector('.post-body');
+    if (postBody) {
+      postBody.setAttribute('style', 'cursor: pointer;');
+    }
   }
 }
 
-customElements.define("nostr-post", NostrPost);
+customElements.define('nostr-post', NostrPost);

@@ -1,14 +1,14 @@
-import NDK, { 
-  NDKEvent, 
-  NDKFilter, 
-  NDKKind, 
-  NDKNip07Signer, 
-  NDKRelay, 
-  NDKRelaySet, 
-  NDKSubscription, 
-  NDKUser, 
+import NDK, {
+  NDKEvent,
+  NDKFilter,
+  NDKKind,
+  NDKNip07Signer,
+  NDKRelay,
+  NDKRelaySet,
+  NDKSubscription,
+  NDKUser,
   NDKUserProfile,
-  ProfilePointer 
+  ProfilePointer,
 } from '@nostr-dev-kit/ndk';
 import { Stats } from './utils';
 
@@ -29,7 +29,6 @@ export interface NostrServiceOptions {
  */
 import { DEFAULT_RELAYS } from './constants';
 
-
 /**
  * NostrService provides a centralized interface for Nostr functionality
  * across all components. It manages a single NDK instance and provides
@@ -48,11 +47,11 @@ export class NostrService {
    */
   constructor(options: NostrServiceOptions = {}) {
     this.relayUrls = options.relays || DEFAULT_RELAYS;
-    
+
     // Initialize NDK with provided relays
     this.ndk = new NDK({
       explicitRelayUrls: this.relayUrls,
-      signer: options.useNip07 ? new NDKNip07Signer() : undefined
+      signer: options.useNip07 ? new NDKNip07Signer() : undefined,
     });
 
     // Auto-connect if specified
@@ -96,7 +95,7 @@ export class NostrService {
    * @returns Array of connected NDKRelay objects
    */
   getRelays(): NDKRelay[] {
-  return Array.from(this.ndk.pool.relays.values());
+    return Array.from(this.ndk.pool.relays.values());
   }
 
   /**
@@ -104,7 +103,7 @@ export class NostrService {
    * @returns Array of relay URLs
    */
   getRelayUrls(): string[] {
-  return this.relayUrls;
+    return this.relayUrls;
   }
 
   /**
@@ -114,7 +113,7 @@ export class NostrService {
   async addRelay(relayUrl: string): Promise<void> {
     if (!this.relayUrls.includes(relayUrl)) {
       this.relayUrls.push(relayUrl);
-      
+
       // If `addExplicitRelay` exists, prefer it to avoid dropping state
       if (typeof this.ndk.addExplicitRelay === 'function') {
         this.ndk.addExplicitRelay(relayUrl);
@@ -123,16 +122,15 @@ export class NostrService {
         const signer = this.ndk.signer;
         this.ndk = new NDK({
           explicitRelayUrls: this.relayUrls,
-          signer
+          signer,
         });
       }
-      
+
       if (this._isConnected) {
         await this.ndk.connect(); // Ensure the new relay is connected
       }
     }
   }
-  
 
   /**
    * Remove a relay from the connection pool
@@ -142,20 +140,19 @@ export class NostrService {
     const index = this.relayUrls.indexOf(relayUrl);
     if (index !== -1) {
       this.relayUrls.splice(index, 1);
-  
+
       // Preserve signer while reinitializing
       const signer = this.ndk.signer;
       this.ndk = new NDK({
         explicitRelayUrls: this.relayUrls,
-        signer
+        signer,
       });
-  
+
       if (this._isConnected) {
         await this.ndk.connect(); // Reconnect with updated relay list
       }
     }
   }
-  
 
   /**
    * Get a user profile by npub or hex key
@@ -163,24 +160,24 @@ export class NostrService {
    * @returns Promise resolving to the NDKUser
    */
   async getProfile(identifier: string): Promise<NDKUser | null> {
-  try {
-  await this.ensureConnected();
-  const user = await this.ndk.getUser({ npub: identifier });
-  await user.fetchProfile();
-  return user;
-  } catch (error) {
-  console.error('Error fetching profile', error);
-  return null;
+    try {
+      await this.ensureConnected();
+      const user = await this.ndk.getUser({ npub: identifier });
+      await user.fetchProfile();
+      return user;
+    } catch (error) {
+      console.error('Error fetching profile', error);
+      return null;
+    }
   }
-  }
-  
+
   /**
    * Get a user by various identifiers
    * @param options Options for identifying the user
    * @returns NDKUser instance
    */
-  getUser(options: { npub?: string, pubkey?: string }): NDKUser {
-  return this.ndk.getUser(options);
+  getUser(options: { npub?: string; pubkey?: string }): NDKUser {
+    return this.ndk.getUser(options);
   }
 
   /**
@@ -189,15 +186,15 @@ export class NostrService {
    * @returns Promise resolving to the NDKEvent
    */
   async getPost(noteId: string): Promise<NDKEvent | null> {
-  try {
-  await this.ensureConnected();
-  // Use fetchEvent instead of getEvent
-  const event = await this.ndk.fetchEvent(noteId);
-  return event;
-  } catch (error) {
-  console.error('Error fetching post', error);
-  return null;
-  }
+    try {
+      await this.ensureConnected();
+      // Use fetchEvent instead of getEvent
+      const event = await this.ndk.fetchEvent(noteId);
+      return event;
+    } catch (error) {
+      console.error('Error fetching post', error);
+      return null;
+    }
   }
 
   /**
@@ -206,17 +203,20 @@ export class NostrService {
    * @param limit Maximum number of posts to fetch
    * @returns Promise resolving to an array of NDKEvents
    */
-  async getUserPosts(userIdentifier: string, limit: number = 20): Promise<NDKEvent[]> {
+  async getUserPosts(
+    userIdentifier: string,
+    limit: number = 20
+  ): Promise<NDKEvent[]> {
     try {
       await this.ensureConnected();
       const user = await this.ndk.getUser({ npub: userIdentifier });
-      
+
       const filter: NDKFilter = {
         authors: [user.pubkey],
         kinds: [NDKKind.Text],
-        limit
+        limit,
       };
-      
+
       const events = await this.ndk.fetchEvents(filter);
       return Array.from(events);
     } catch (error) {
@@ -233,32 +233,32 @@ export class NostrService {
   async getPostStats(noteId: string): Promise<Stats> {
     try {
       await this.ensureConnected();
-      
+
       const reactions = await this.ndk.fetchEvents({
         kinds: [NDKKind.Reaction],
-        '#e': [noteId]
+        '#e': [noteId],
       });
-      
+
       const reposts = await this.ndk.fetchEvents({
         kinds: [NDKKind.Repost],
-        '#e': [noteId]
+        '#e': [noteId],
       });
-      
+
       const zaps = await this.ndk.fetchEvents({
         kinds: [NDKKind.Zap],
-        '#e': [noteId]
+        '#e': [noteId],
       });
-  
+
       const replies = await this.ndk.fetchEvents({
         kinds: [NDKKind.Text],
-        '#e': [noteId]
+        '#e': [noteId],
       });
-  
+
       return {
         likes: reactions.size,
         reposts: reposts.size,
         zaps: zaps.size,
-        replies: replies.size
+        replies: replies.size,
       };
     } catch (error) {
       console.error('Error getting post stats', error);
@@ -272,43 +272,43 @@ export class NostrService {
    * @returns Promise resolving to success status
    */
   async followUser(userPubkey: string): Promise<boolean> {
-  try {
-  await this.ensureConnected();
-  
-  if (!this.ndk.signer) {
-  throw new Error('No signer available. Use NIP-07 or provide a signer.');
+    try {
+      await this.ensureConnected();
+
+      if (!this.ndk.signer) {
+        throw new Error('No signer available. Use NIP-07 or provide a signer.');
+      }
+
+      // Get the current user
+      const currentUser = await this.ndk.signer.user();
+
+      // Fetch the current contact list
+      const contactListEvents = await this.ndk.fetchEvents({
+        authors: [currentUser.pubkey],
+        kinds: [NDKKind.Contacts],
+      });
+
+      let contactList: NDKEvent;
+      if (contactListEvents.size === 0) {
+        // Create a new contact list if none exists
+        contactList = new NDKEvent(this.ndk);
+        contactList.kind = NDKKind.Contacts;
+      } else {
+        // Use the most recent contact list
+        contactList = Array.from(contactListEvents)[0];
+      }
+
+      // Add the new user to the contact list
+      const tags = contactList.tags ?? [];
+      contactList.tags = [...tags, ['p', userPubkey]];
+      // Publish the updated contact list
+      await contactList.publish();
+      return true;
+    } catch (error) {
+      console.error('Error following user', error);
+      return false;
+    }
   }
-  
-  // Get the current user
-  const currentUser = await this.ndk.signer.user();
-  
-  // Fetch the current contact list
-  const contactListEvents = await this.ndk.fetchEvents({
-    authors: [currentUser.pubkey],
-    kinds: [NDKKind.Contacts]
-  });
-  
-  let contactList: NDKEvent;
-  if (contactListEvents.size === 0) {
-    // Create a new contact list if none exists
-    contactList = new NDKEvent(this.ndk);
-    contactList.kind = NDKKind.Contacts;
-  } else {
-    // Use the most recent contact list
-    contactList = Array.from(contactListEvents)[0];
-  }
-  
-    // Add the new user to the contact list
-    const tags = contactList.tags ?? [];
-    contactList.tags = [...tags, ['p', userPubkey]];    
-    // Publish the updated contact list
-    await contactList.publish();
-    return true;
-  } catch (error) {
-    console.error('Error following user', error);
-    return false;
-  }
-}
 
   /**
    * Subscribe to events matching a filter
@@ -316,7 +316,10 @@ export class NostrService {
    * @param callback Function to call for each matching event
    * @returns The subscription object
    */
-  subscribeToEvents(filter: NDKFilter, callback: (event: NDKEvent) => void): NDKSubscription {
+  subscribeToEvents(
+    filter: NDKFilter,
+    callback: (event: NDKEvent) => void
+  ): NDKSubscription {
     const subscription = this.ndk.subscribe(filter);
     subscription.on('event', callback);
     return subscription;
@@ -361,7 +364,7 @@ export class NostrService {
    * @param user The user to set as current
    */
   set currentUser(user: NDKUser | null) {
-  this._user = user;
+    this._user = user;
   }
 }
 
