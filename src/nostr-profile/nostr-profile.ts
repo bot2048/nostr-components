@@ -289,8 +289,11 @@ export default class NostrProfile extends HTMLElement {
   }
 
   disconnectedCallback() {
-  // TODO: Check for cleanup method
-  }
+    // Remove event listeners to prevent memory leaks
+    this.shadowRoot?.querySelector('.nostr-profile')?.removeEventListener('click', this.onProfileClick);
+    this.shadowRoot?.querySelector('#npub-copy')?.removeEventListener('click', e => this.copy(this.getAttribute('npub') || this.ndkUser.npub || ''));
+    this.shadowRoot?.querySelector('#nip05-copy')?.removeEventListener('click', e => this.copy(this.getAttribute('nip05') || this.userProfile.nip05 || ''));
+    }
 
   getStyles() {
   return ``;

@@ -195,9 +195,8 @@ export default class NostrPost extends HTMLElement {
   event.stopPropagation();
   
   // Custom mention handler if provided
-  const onMentionClick = this.getAttribute('onMentionClick');
-  if(onMentionClick !== null && window[onMentionClick] && typeof window[onMentionClick] === 'function') {
-  window[onMentionClick](username);
+  if(this.onMentionClick !== null && typeof this.onMentionClick === 'function') {
+    this.onMentionClick(username);
   return;
   }
   
@@ -401,29 +400,37 @@ export default class NostrPost extends HTMLElement {
 
   switch (item.type) {
     case 'image':
+    {
       // Sanitize image URL
       const safeImgSrc = sanitizeText(item.value);
       html.push(`<img width="100%" src="${safeImgSrc}" alt="Image">`);
       mediaCount++;
       break;
+    }
     case 'gif':
+    {
       // Sanitize gif URL
       const safeGifSrc = sanitizeText(item.value);
       html.push(`<img width="100%" src="${safeGifSrc}" alt="GIF">`);
       mediaCount++;
       break;
+    }
     case 'video':
+    {
       // Sanitize video URL
       const safeVideoSrc = sanitizeText(item.value);
       html.push(`<video width="100%" src="${safeVideoSrc}" controls></video>`);
       mediaCount++;
       break;
+    }
     case 'link':
+    {
       // Sanitize link URL and text
       const safeLinkHref = sanitizeText(item.value);
       const safeLinkText = sanitizeText(item.value);
       html.push(`<a href="${safeLinkHref}">${safeLinkText}</a>`);
       break;
+    }
   }
   }
   }
