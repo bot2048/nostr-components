@@ -395,25 +395,46 @@ export default class NostrProfile extends HTMLElement {
   }
 
   render() {
-    // Sanitize user profile data to prevent XSS vulnerabilities
+    // Initialize sanitizedUserProfile outside conditionals so it's available throughout
     let sanitizedUserProfile = {
-      displayName: this.userProfile.displayName ? sanitizeText(this.userProfile.displayName) : '',
-      name: this.userProfile.name ? sanitizeText(this.userProfile.name) : '',
-      image: this.userProfile.image ? sanitizeText(this.userProfile.image) : '',
-      banner: this.userProfile.banner ? sanitizeText(this.userProfile.banner) : '',
-      nip05: this.userProfile.nip05 ? sanitizeText(this.userProfile.nip05) : '',
-      about: this.userProfile.about ? sanitizeText(this.userProfile.about) : '',
-      website: this.userProfile.website ? sanitizeText(this.userProfile.website) : ''
+      displayName: '',
+      name: '',
+      image: '',
+      banner: '',
+      nip05: '',
+      about: '',
+      website: ''
     };
+
+    // Populate sanitizedUserProfile if we have user data
+    if (this.userProfile) {
+      sanitizedUserProfile = {
+        displayName: this.userProfile.displayName ? sanitizeText(this.userProfile.displayName) : '',
+        name: this.userProfile.name ? sanitizeText(this.userProfile.name) : '',
+        image: this.userProfile.image ? sanitizeText(this.userProfile.image) : '',
+        banner: this.userProfile.banner ? sanitizeText(this.userProfile.banner) : '',
+        nip05: this.userProfile.nip05 ? sanitizeText(this.userProfile.nip05) : '',
+        about: this.userProfile.about ? sanitizeText(this.userProfile.about) : '',
+        website: this.userProfile.website ? sanitizeText(this.userProfile.website) : ''
+      };
+    }
     
     const showNpub = this.getAttribute('show-npub') === 'true';
     const showFollow = this.getAttribute('show-follow') !== 'false';
+    
+    // Variable to hold the HTML content - will be populated based on state
+    let contentHTML = '';
 
-  // Variable to hold the HTML content
-  let contentHTML;
-  
-  if(this.isLoading) {
-    // Create the HTML content for loading state
+    // Generate the appropriate HTML based on component state
+    if (this.isError) {
+      // Error state HTML
+      contentHTML = `
+      <div class="nostr-profile">
+        <p>Failed to load profile</p>
+      </div>
+      `;
+    } else if(this.isLoading) {
+      // Create the HTML content for loading state
     contentHTML = `
   ${getProfileStyles(this.theme)}
   <div class="nostr-profile">
@@ -782,6 +803,10 @@ export default class NostrProfile extends HTMLElement {
   </div>
   `;
 
+  // For the normal case, contentHTML is already set by the large template literal above
+  // No need for extra contentHTML assignment here - it's already populated with the normal case HTML
+  
+  // Now contentHTML is properly defined for all cases (loading, error, and normal)
   // Sanitize the final HTML before inserting it into the DOM to prevent XSS attacks
   this.shadowRoot!.innerHTML = sanitizeHtml(getProfileStyles(this.theme) + contentHTML);
   

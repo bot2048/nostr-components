@@ -34,9 +34,7 @@ export default class NostrPost extends HTMLElement {
   if(userRelays) {
   const relayArray = userRelays.split(',');
   // Add each relay to the service
-  for (const relay of relayArray) {
-  await nostrService.addRelay(relay);
-  }
+  await Promise.all(relayArray.map((relay) => nostrService.addRelay(relay)));
   }
   }
 
