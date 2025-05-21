@@ -1,11 +1,11 @@
 import { NDKEvent, NDKKind, NDKUserProfile, ProfilePointer } from '@nostr-dev-kit/ndk';
 import { nip21 } from 'nostr-tools';
-import Glide from '@glidejs/glide';
 import { nostrService } from '../common/nostr-service';
 import { Stats } from '../common/utils';
 import { Theme } from '../common/types';
 import { getPostStyles } from './nostr-post.style';
 import { replyIcon, likeIcon, zapIcon, repostIcon, errorIcon } from '../common/icons';
+import { sanitizeHtml, sanitizeText } from '../common/sanitize';
 
 export default class NostrPost extends HTMLElement {
   private rendered: boolean = false;
@@ -25,11 +25,9 @@ export default class NostrPost extends HTMLElement {
   image: '',
   nip05: '',
   };
-
-  private onClick: Function | null = null;
-  private onAuthorClick: Function | null = null;
-  private onMentionClick: Function | null = null;
-
+  private onClick: ((post: NDKEvent | null) => void) | null = null;
+  private onAuthorClick: ((npub?: string, profile?: NDKUserProfile | null) => void) | null = null;
+  private onMentionClick: ((username: string) => void) | null = null;
   configureRelays = async () => {
   const userRelays = this.getAttribute('relays');
 
@@ -386,7 +384,8 @@ export default class NostrPost extends HTMLElement {
 
   for (const item of content) {
   if (item.type === 'text') {
-  textBuffer += item.value;
+  // Sanitize text content to prevent XSS
+  textBuffer += sanitizeText(item.value);
   } else if (item.type === 'embedded-note') {
   // Handle embedded note placeholder
   if (textBuffer) {
@@ -394,7 +393,8 @@ export default class NostrPost extends HTMLElement {
     textBuffer = '';
   }
   
-  html.push(`<div class="embedded-post-placeholder" data-note-id="${item.noteId}"></div>`);
+  const safeNoteId = sanitizeText(item.noteId);
+  html.push(`<div class="embedded-post-placeholder" data-note-id="${safeNoteId}"></div>`);
   } else {
   if (textBuffer) {
     html.push(`<span class="text-content">${textBuffer.replace(/\n/g, '<br />')}</span>`);
@@ -403,22 +403,29 @@ export default class NostrPost extends HTMLElement {
 
   switch (item.type) {
     case 'image':
-    html.push(`<img width="100%" src="${item.value}" alt="Image">`);
-    mediaCount++;
-    break;
+      // Sanitize image URL
+      const safeImgSrc = sanitizeText(item.value);
+      html.push(`<img width="100%" src="${safeImgSrc}" alt="Image">`);
+      mediaCount++;
+      break;
     case 'gif':
-    html.push(`<img width="100%" src="${item.value}" alt="GIF">`);
-    mediaCount++;
-    break;
+      // Sanitize gif URL
+      const safeGifSrc = sanitizeText(item.value);
+      html.push(`<img width="100%" src="${safeGifSrc}" alt="GIF">`);
+      mediaCount++;
+      break;
     case 'video':
-    // Leave the thumbnail handling to the browser for regular posts
-    // This preserves the original behavior that was working
-    html.push(`<video width="100%" src="${item.value}" controls></video>`);
-    mediaCount++;
-    break;
+      // Sanitize video URL
+      const safeVideoSrc = sanitizeText(item.value);
+      html.push(`<video width="100%" src="${safeVideoSrc}" controls></video>`);
+      mediaCount++;
+      break;
     case 'link':
-    html.push(`<a href="${item.value}">${item.value}</a>`);
-    break;
+      // Sanitize link URL and text
+      const safeLinkHref = sanitizeText(item.value);
+      const safeLinkText = sanitizeText(item.value);
+      html.push(`<a href="${safeLinkHref}">${safeLinkText}</a>`);
+      break;
   }
   }
   }
@@ -431,9 +438,9 @@ export default class NostrPost extends HTMLElement {
   }
 
   async renderEmbeddedPost(noteId: string) {
-  if (!this.embeddedPosts.has(noteId)) {
-  return `<div class="embedded-post-error">Unable to load embedded post</div>`;
-  }
+    if (!this.embeddedPosts.has(noteId)) {
+      return sanitizeHtml(`<div class="embedded-post-error">Unable to load embedded post</div>`);
+    }
 
   const post = this.embeddedPosts.get(noteId)!;
   
@@ -503,7 +510,8 @@ export default class NostrPost extends HTMLElement {
   mediaHtml += `</div>`;
   }
 
-  return `
+  // Construct the HTML for the embedded post
+  const embeddedPostHtml = `
   <div class="embedded-post" data-note-id="${noteId}">
   <div class="embedded-post-header">
     <div class="embedded-author-avatar" style="cursor: pointer;">
@@ -521,6 +529,9 @@ export default class NostrPost extends HTMLElement {
   </div>
   </div>
   `;
+  
+  // Sanitize the HTML before returning it to prevent XSS attacks
+  return sanitizeHtml(embeddedPostHtml);
   }
 
   setupMentionClickHandlers() {
@@ -578,9 +589,10 @@ export default class NostrPost extends HTMLElement {
   }
 
   async render() {
-  const content = this.post?.content ||  '';
-  const parsedContent = await this.parseText(content);
-  const htmlToRender = this.renderContent(parsedContent);
+    const content = this.post?.content ||  '';
+    const parsedContent = await this.parseText(content);
+    // Sanitize HTML to prevent XSS attacks
+    const htmlToRender = sanitizeHtml(this.renderContent(parsedContent));
 
   let date = '';
   if(this.post && this.post.created_at) {

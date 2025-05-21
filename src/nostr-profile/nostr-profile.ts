@@ -3,6 +3,8 @@ import { nostrService } from '../common/nostr-service';
 import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
 import { getProfileStyles } from './nostr-profile.style';
+import { sanitizeHtml, sanitizeText } from '../common/sanitize';
+import { errorIcon } from '../common/icons';
 
 export default class NostrProfile extends HTMLElement {
   private rendered: boolean = false;
@@ -256,7 +258,7 @@ export default class NostrProfile extends HTMLElement {
   }
 
   static get observedAttributes() {
-  return ['relays', 'pubkey', 'nip05', 'theme', 'show-npub', 'show-follow', 'onClick'];
+  return ['relays', 'pubkey', 'npub', 'nip05', 'theme', 'show-npub', 'show-follow', 'onClick'];
   }
 
   async attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
@@ -393,11 +395,26 @@ export default class NostrProfile extends HTMLElement {
   }
 
   render() {
-  const showNpub = this.getAttribute('show-npub') === 'true';
-  const showFollow = this.getAttribute('show-follow') !== 'false';
+    // Sanitize user profile data to prevent XSS vulnerabilities
+    let sanitizedUserProfile = {
+      displayName: this.userProfile.displayName ? sanitizeText(this.userProfile.displayName) : '',
+      name: this.userProfile.name ? sanitizeText(this.userProfile.name) : '',
+      image: this.userProfile.image ? sanitizeText(this.userProfile.image) : '',
+      banner: this.userProfile.banner ? sanitizeText(this.userProfile.banner) : '',
+      nip05: this.userProfile.nip05 ? sanitizeText(this.userProfile.nip05) : '',
+      about: this.userProfile.about ? sanitizeText(this.userProfile.about) : '',
+      website: this.userProfile.website ? sanitizeText(this.userProfile.website) : ''
+    };
+    
+    const showNpub = this.getAttribute('show-npub') === 'true';
+    const showFollow = this.getAttribute('show-follow') !== 'false';
 
+  // Variable to hold the HTML content
+  let contentHTML;
+  
   if(this.isLoading) {
-  this.shadowRoot!.innerHTML = `
+    // Create the HTML content for loading state
+    contentHTML = `
   ${getProfileStyles(this.theme)}
   <div class="nostr-profile">
     <div id="profile">
@@ -415,6 +432,9 @@ export default class NostrProfile extends HTMLElement {
     </div>
     </div>
     </div>
+    
+    // Sanitize and apply the HTML content
+    this.shadowRoot!.innerHTML = sanitizeHtml(loadingHTML);
     <div class="profile_actions">
     ${
     this.ndkUser && this.ndkUser.npub && showFollow
@@ -559,7 +579,7 @@ export default class NostrProfile extends HTMLElement {
     ${
     this.isLoading
     ? '<div style="width: 100%; height: 100%;" class="skeleton"></div>'
-    : this.userProfile.banner
+    : sanitizedUserProfile.banner
     ? `
       <a
       target="_blank"
@@ -570,8 +590,7 @@ export default class NostrProfile extends HTMLElement {
       data-pswp-height="330.3333333333333"
       >
       <img
-      id="4075d846142df0a70fde5fd340e774697c4a7b4f2fce3635b02e061afcd16139"
-      src="${this.userProfile.banner}"
+      src="${sanitizedUserProfile.banner}"
       width="524px"/>
       </a>
     `
@@ -595,8 +614,7 @@ export default class NostrProfile extends HTMLElement {
         data-pswp-width="991"
         data-pswp-height="989.6777851901267"
         ><img
-        id="70f547f7e6e31ae6952f41d75d50a4ac13b9290d5d8e9e9eb89801501de242fd"
-        src="${this.userProfile.image}"
+        src="${sanitizedUserProfile.image}"
         width="524px"
         /></a>
       `
@@ -624,7 +642,7 @@ export default class NostrProfile extends HTMLElement {
       this.isLoading
       ? '<div style="width: 100px; height: 16px; border-radius: 20px" class="skeleton"></div>'
       : `
-      <div class="name-text">${this.userProfile.displayName || this.userProfile.name}</div>
+      <div class="name-text">${sanitizedUserProfile.displayName || sanitizedUserProfile.name}</div>
       `
     }
     </div>
@@ -635,9 +653,9 @@ export default class NostrProfile extends HTMLElement {
       this.isLoading
       ? '<div style="width: 75px; height: 8px; border-radius: 20px" class="skeleton"></div>'
       :
-      this.userProfile.nip05
+      sanitizedUserProfile.nip05
       ? `<div class="nip05">
-      <span>${this.userProfile.nip05}</span>
+      <span>${sanitizedUserProfile.nip05}</span>
       <span id="nip05-copy" class="copy-button">&#x2398;</span>
       </div>`
       : ''
@@ -654,18 +672,18 @@ export default class NostrProfile extends HTMLElement {
       <div style="width: 100%; height: 12px; border-radius: 20px; margin-bottom: 12px" class="skeleton"></div>
       <div style="width: 40%; height: 12px; border-radius: 20px" class="skeleton"></div>
     `
-    : this.userProfile.about || ''
+    : sanitizedUserProfile.about || ''
     }
     </div>
     <div class="links">
     ${
     this.isLoading
     ? '<div style="width: 150px; height: 12px; border-radius: 20px" class="skeleton"></div>'
-    : this.userProfile.website
+    : sanitizedUserProfile.website
     ? `
       <div class="website">
-      <a target="_blank" href="${this.userProfile.website}"
-      >${this.userProfile.website}</a
+      <a target="_blank" href="${sanitizedUserProfile.website}"
+      >${sanitizedUserProfile.website}</a
       >
       </div>
     `
@@ -764,6 +782,9 @@ export default class NostrProfile extends HTMLElement {
   </div>
   `;
 
+  // Sanitize the final HTML before inserting it into the DOM to prevent XSS attacks
+  this.shadowRoot!.innerHTML = sanitizeHtml(getProfileStyles(this.theme) + contentHTML);
+  
   this.attachEventListeners();
   }
 }

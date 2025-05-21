@@ -1,19 +1,20 @@
+// vite.config.mts
 import { defineConfig } from 'vite';
-// import dts from 'vite-plugin-dts'; 
-import { resolve } from 'path';
+// import dts from 'vite-plugin-dts';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
     // dts({
-    //   insertTypesEntry: true, // Creates a single index.d.ts entry file
-    //   // Optional: Specify the tsconfig file if it's not standard
-    //   // tsConfigFilePath: './tsconfig.build.json'
+    //   insertTypesEntry: true,
     // })
   ],
   build: {
     sourcemap: true,
     rollupOptions: {
-      // Multiple entry points: main bundle and per-component bundles
       input: {
         index: resolve(__dirname, 'src/index.ts'),
         'nostr-follow-button': resolve(__dirname, 'src/nostr-follow-button/nostr-follow-button.ts'),
@@ -24,11 +25,10 @@ export default defineConfig({
       external: ['lit', 'dayjs'],
       output: [
         {
-          // ESM output for all entries
-          entryFileNames: (chunkInfo) => {
-            if (chunkInfo.name === 'index') return 'nostr-components.es.js';
-            return `components/[name].es.js`;
-          },
+          entryFileNames: (chunkInfo) =>
+            chunkInfo.name === 'index'
+              ? 'nostr-components.es.js'
+              : `components/[name].es.js`,
           format: 'es',
           inlineDynamicImports: false,
           globals: {
@@ -37,7 +37,6 @@ export default defineConfig({
           },
         },
         {
-          // UMD output ONLY for the main entry
           entryFileNames: () => 'nostr-components.umd.js',
           format: 'umd',
           inlineDynamicImports: false,
@@ -49,9 +48,8 @@ export default defineConfig({
         },
       ],
     },
-    lib: false, // Disable lib mode to allow multiple entries
+    lib: false,
     outDir: 'dist',
     emptyOutDir: true,
   },
-
 });

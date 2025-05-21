@@ -1,8 +1,9 @@
 import { NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
 import { nostrService } from "../common/nostr-service";
-import { getLoadingNostrich, getNostrLogo, getSuccessAnimation } from "../common/theme-variables";
-import { getFollowButtonStyles } from "./nostr-follow-button.style";
-import { Theme } from "../common/types";
+import { getFollowButtonStyles } from './nostr-follow-button.style';
+import { getLoadingNostrich, getNostrLogo, getSuccessAnimation } from '../common/theme-variables';
+import { Theme } from '../common/types';
+import { sanitizeHtml, sanitizeText } from '../common/sanitize';
 
 export default class NostrFollowButton extends HTMLElement {
   private rendered: boolean = false;
@@ -20,16 +21,22 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   configureRelays = async () => {
-  const userRelays = this.getAttribute("relays");
-
-  if (userRelays) {
-  const relayArray = userRelays.split(",");
-  // Add each relay to the service
-  for (const relay of relayArray) {
-  await nostrService.addRelay(relay);
-  }
-  }
+    const userRelays = this.getAttribute("relays");
+  
+    if (userRelays) {
+      const relayArray = Array.from(
+        new Set(
+          userRelays
+            .split(',')
+            .map(r => r.trim())
+            .filter(Boolean)
+        )
+      );
+  
+      await Promise.all(relayArray.map(r => nostrService.addRelay(r)));
+    }
   };
+  
 
   getTheme = async () => {
   this.theme = "light";
@@ -60,7 +67,7 @@ export default class NostrFollowButton extends HTMLElement {
   }
 
   static get observedAttributes() {
-  return ["relays", "npub", "theme"];
+    return ["relays", "npub", "nip05", "pubkey", "theme", "icon-width", "icon-height"];
   }
 
   async attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
@@ -141,10 +148,14 @@ export default class NostrFollowButton extends HTMLElement {
   const iconHeight = iconHeightAttribute !== null ? Number(iconHeightAttribute): 25;
 
   const buttonText = this.isFollowed ? 'Followed' : 'Follow';
+  
+  // Sanitize any user-generated content
+  const sanitizedErrorMessage = this.isError ? sanitizeText(this.errorMessage) : '';
 
-  this.shadowRoot!.innerHTML = getFollowButtonStyles(this.theme, this.isLoading);
- 
-  this.shadowRoot!.innerHTML += `
+  // Create styles and button content separately to avoid modifying innerHTML multiple times
+  const styles = getFollowButtonStyles(this.theme, this.isLoading);
+  
+  const buttonContent = `
   <div class="nostr-follow-button-container ${this.isError ? 'nostr-follow-button-error': ''}">
   <div class="nostr-follow-button-wrapper">
     <button class="nostr-follow-button">
@@ -160,11 +171,14 @@ export default class NostrFollowButton extends HTMLElement {
 
   ${
     this.isError
-    ? `<small>${this.errorMessage}</small>`
+    ? `<small>${sanitizedErrorMessage}</small>`
     : ''
   }
   </div>
   `;
+  
+  // Apply sanitized content to the DOM
+  this.shadowRoot!.innerHTML = sanitizeHtml(styles + buttonContent);
 
   this.attachEventListeners();
   }

@@ -1,8 +1,10 @@
-import { NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
+import { NDKEvent, NDKUser, NDKUserProfile } from '@nostr-dev-kit/ndk';
 import { nostrService } from '../common/nostr-service';
+import { getProfileBadgeStyles } from './nostr-profile-badge.style';
 import { maskNPub } from '../common/utils';
 import { Theme } from '../common/types';
-import { getProfileBadgeStyles } from './nostr-profile-badge.style';
+import { sanitizeHtml, sanitizeText } from '../common/sanitize';
+import { errorIcon } from '../common/icons';
 
 export default class NostrProfileBadge extends HTMLElement {
   private rendered: boolean = false;
@@ -64,7 +66,7 @@ export default class NostrProfileBadge extends HTMLElement {
   const user = await this.getNDKUser();
 
   if (user?.npub) {
-  // this.ndkUser = user; // Removed unused variable
+  this.ndkUser = user; 
 
   // Check if profile was fetched successfully
   if (user.profile) {
@@ -273,7 +275,7 @@ export default class NostrProfileBadge extends HTMLElement {
   contentHTML = `
   <div class='nostr-profile-badge-container'>
     <div class='nostr-profile-badge-left-container'>
-    <div class="error">&#9888;</div>
+    <div class="error">${errorIcon}</div>
     </div>
     <div class='nostr-profile-badge-right-container'>
     <span class="error-text">Unable to load</span>
@@ -288,8 +290,10 @@ export default class NostrProfileBadge extends HTMLElement {
   this.classList.toggle('dark', this.theme === 'dark');
   this.classList.remove('loading', 'error-container'); // Clear loading/error states
 
-  const profileName = this.userProfile.displayName || this.userProfile.name || maskNPub(this.ndkUser?.npub || '');
-  const profileImage = this.userProfile.image || './assets/default_dp.png';
+  // Sanitize user profile data to prevent XSS attacks
+  const profileName = sanitizeText(this.userProfile.displayName || this.userProfile.name || maskNPub(this.ndkUser?.npub || ''));
+  const profileImage = sanitizeText(this.userProfile.image || './assets/default_dp.png');
+  const profileNip05 = this.userProfile.nip05 ? sanitizeText(this.userProfile.nip05) : '';
 
   contentHTML = `
   <div class='nostr-profile-badge-container'>
@@ -298,7 +302,7 @@ export default class NostrProfileBadge extends HTMLElement {
     </div>
     <div class='nostr-profile-badge-right-container'>
     <div class='nostr-profile-badge-name' title="${profileName}">${profileName}</div>
-    ${this.userProfile.nip05 ? `<div class='nostr-profile-badge-nip05' title="${this.userProfile.nip05}">${this.userProfile.nip05}</div>` : ''}
+    ${profileNip05 ? `<div class='nostr-profile-badge-nip05' title="${profileNip05}">${profileNip05}</div>` : ''}
     ${showNpub ? this.renderNpub() : ''}
     ${showFollow && this.ndkUser ? `<nostr-follow-button pubkey="${this.ndkUser.pubkey}"></nostr-follow-button>` : ''}
     </div>
@@ -311,8 +315,11 @@ export default class NostrProfileBadge extends HTMLElement {
   this.classList.remove('loading');
   }
 
-  // Combine styles and content, assign ONCE to innerHTML
-  this.innerHTML = getProfileBadgeStyles(this.theme) + contentHTML;
+  // Combine styles and content, then sanitize before assigning to innerHTML
+  const completeHTML = getProfileBadgeStyles(this.theme) + contentHTML;
+  
+  // Sanitize the final HTML to prevent XSS attacks
+  this.innerHTML = sanitizeHtml(completeHTML);
 
   this.attachEventListeners();
   }

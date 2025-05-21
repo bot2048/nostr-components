@@ -27,11 +27,8 @@ export interface NostrServiceOptions {
 /**
  * Default relay list if none is provided
  */
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://relay.nostr.band',
-  'wss://nos.lol'
-];
+import { DEFAULT_RELAYS } from './constants';
+
 
 /**
  * NostrService provides a centralized interface for Nostr functionality
@@ -115,19 +112,27 @@ export class NostrService {
    * @param relayUrl The URL of the relay to add
    */
   async addRelay(relayUrl: string): Promise<void> {
-  if (!this.relayUrls.includes(relayUrl)) {
-  this.relayUrls.push(relayUrl);
-  // We'll handle this by reinitializing the NDK with the new relay list
-  this.ndk = new NDK({
-  explicitRelayUrls: this.relayUrls
-  });
+    if (!this.relayUrls.includes(relayUrl)) {
+      this.relayUrls.push(relayUrl);
   
-  if (this._isConnected) {
-  // Reconnect if we were already connected
-  await this.ndk.connect();
+      // If `addExplicitRelay` exists, prefer it to avoid dropping state
+      if (typeof this.ndk.addExplicitRelay === 'function') {
+        this.ndk.addExplicitRelay(relayUrl);
+      } else {
+        // Fallback: preserve signer when reinitializing
+        const signer = this.ndk.signer;
+        this.ndk = new NDK({
+          explicitRelayUrls: this.relayUrls,
+          signer
+        });
+      }
+  
+      if (this._isConnected) {
+        await this.ndk.connect(); // Ensure the new relay is connected
+      }
+    }
   }
-  }
-  }
+  
 
   /**
    * Remove a relay from the connection pool
@@ -137,17 +142,20 @@ export class NostrService {
     const index = this.relayUrls.indexOf(relayUrl);
     if (index !== -1) {
       this.relayUrls.splice(index, 1);
-      // We'll handle this by reinitializing the NDK with the filtered relay list
+  
+      // Preserve signer while reinitializing
+      const signer = this.ndk.signer;
       this.ndk = new NDK({
-        explicitRelayUrls: this.relayUrls
+        explicitRelayUrls: this.relayUrls,
+        signer
       });
-      
+  
       if (this._isConnected) {
-        // Reconnect if we were already connected
-        await this.ndk.connect();
+        await this.ndk.connect(); // Reconnect with updated relay list
       }
     }
   }
+  
 
   /**
    * Get a user profile by npub or hex key
@@ -291,8 +299,8 @@ export class NostrService {
   }
   
     // Add the new user to the contact list
-    contactList.tags = [...contactList.tags, ['p', userPubkey]];
-    
+    const tags = contactList.tags ?? [];
+    contactList.tags = [...tags, ['p', userPubkey]];    
     // Publish the updated contact list
     await contactList.publish();
     return true;
