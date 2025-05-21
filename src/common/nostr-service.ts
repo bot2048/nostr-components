@@ -40,6 +40,7 @@ export class NostrService {
   private _isConnected: boolean = false;
   private _isConnecting: boolean = false;
   private _user: NDKUser | null = null;
+  private _signer: NDKNip07Signer | null = null;
 
   /**
    * Create a new NostrService instance
@@ -104,6 +105,34 @@ export class NostrService {
    */
   getRelayUrls(): string[] {
     return this.relayUrls;
+  }
+
+  /**
+   * Get the current signer instance, initializing it if necessary
+   * @returns Promise that resolves to the NDKSigner or null if not available
+   */
+  async getSigner(): Promise<NDKNip07Signer | null> {
+    // If we already have a signer, return it
+    if (this._signer) {
+      return this._signer;
+    }
+
+    // Try to initialize NIP-07 signer if available
+    if (typeof window !== 'undefined' && (window as any).nostr) {
+      try {
+        this._signer = new NDKNip07Signer();
+        // Test the signer to ensure it works
+        await this._signer.user().catch(() => {
+          console.warn('NIP-07 signer failed to get user');
+          this._signer = null;
+        });
+      } catch (error) {
+        console.error('Failed to initialize NIP-07 signer:', error);
+        this._signer = null;
+      }
+    }
+
+    return this._signer;
   }
 
   /**

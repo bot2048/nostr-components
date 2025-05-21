@@ -30,6 +30,10 @@ export default defineConfig({
           __dirname,
           'src/nostr-profile-badge/nostr-profile-badge.ts'
         ),
+        'nostr-zap-button': resolve(
+          __dirname,
+          'src/nostr-zap-button/nostr-zap-button.ts'
+        ),
       },
       external: ['lit', 'dayjs'],
       output: [
