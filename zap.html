@@ -4,30 +4,102 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>Nostr Zap Button Examples</title>
     <style>
       body {
-        margin: 0;
+        font-family: sans-serif;
+        margin: 20px;
+        background-color: #f4f4f4;
       }
-
-      :root {
-        /* --nstrc-background: #F00 !important; */
+      .container {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      nostr-zap-button {
+        margin-right: 10px;
+        margin-bottom: 10px;
+      }
+      code {
+        display: block;
+        background-color: #eee;
+        padding: 5px;
+        border-radius: 4px;
+        margin-top: 5px;
+        font-family: monospace;
       }
     </style>
-
-
   </head>
   <body>
+    <h1>Nostr Zap Button Examples</h1>
 
-    <div id="app"></div>
+    <!-- Ensure the component script is loaded -->
+    <!-- This path assumes you have built the components to the ./dist directory -->
     <script type="module" src="./dist/components/nostr-zap-button.es.js"></script>
-    <script type="module" src="./dist/components/nostr-follow-button.es.js"></script>
+    <!-- If you are using a dev server, you might source the .ts file directly e.g. /src/nostr-zap/nostr-zap.ts -->
 
-    <nostr-zap-button></nostr-zap-button>
+    <div class="container">
+      <h2>Basic Zap (No recipient - will show error)</h2>
+      <nostr-zap-button></nostr-zap-button>
+      <code>&lt;nostr-zap-button&gt;&lt;/nostr-zap-button&gt;</code>
+    </div>
 
-    <!--
-    <nostr-follow-button nip05="saiy2k@iris.to"></nostr-follow-button>
-    -->
+    <div class="container">
+      <h2>Zap by NIP-05 Identifier</h2>
+      <p>Zapping Jack (jack@cash.app / npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsflh33mr3qzy8w2p)</p>
+      <nostr-zap-button
+        data-nip05="jack@cash.app"
+      ></nostr-zap-button>
+      <code>&lt;nostr-zap-button data-nip05="jack@cash.app"&gt;&lt;/nostr-zap-button&gt;</code>
+    </div>
+
+    <div class="container">
+      <h2>Zap by npub</h2>
+      <p>Zapping fiatjaf (npub1xtscya34g58tk0z602ptr2xrt5dxmahnccj63zrfva7wo7q4fzfs5f0n0t)</p>
+      <nostr-zap-button
+        data-npub="npub1xtscya34g58tk0z602ptr2xrt5dxmahnccj63zrfva7wo7q4fzfs5f0n0t"
+      ></nostr-zap-button>
+      <code>&lt;nostr-zap-button data-npub="npub1xtscya34g58tk0z602ptr2xrt5dxmahnccj63zrfva7wo7q4fzfs5f0n0t"&gt;&lt;/nostr-zap-button&gt;</code>
+    </div>
+
+    <div class="container">
+      <h2>Zap by npub with Custom Amount and Comment</h2>
+      <p>Zapping dergigi (npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc) with 21 sats and a comment.</p>
+      <nostr-zap-button
+        data-npub="npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc"
+        data-amount="21"
+        data-comment="Awesome work on NDK!"
+      ></nostr-zap-button>
+      <code>&lt;nostr-zap-button data-npub="npub1dergggklka99wwrs92yz8wdjs952h2ux2ha2ed598ngwu9w7a6fsh9xzpc" data-amount="21" data-comment="Awesome work on NDK!"&gt;&lt;/nostr-zap-button&gt;</code>
+    </div>
+
+    <div class="container">
+      <h2>Zap by nevent (Event Author)</h2>
+      <p>Zapping the author of a specific event. <strong>Replace with a valid nevent.</strong></p>
+      <nostr-zap-button
+        data-nevent="nostr:nevent1qvzqqqqqqypzq06y2wleld92k49jm42hfcrj5vthzt9e8s49ftvuc3mkxj0cvar0qywhwumn8ghj7mn0wd68ytnzd96xxmmfdejhytnnda3kjctv9uq3qamnwvaz7tmwdaehgu3wd4hk6tcpzemhxue69uhk2er9dchxummnw3ezumrpdejz7qpqffrc5c75chrg89k5lp8jdt9zqfeyf47pffyyqm9fvgk6kcrx7dzs3teq6u"
+        data-amount="100"
+        data-comment="Nice note!"
+      ></nostr-zap-button>
+      <code>&lt;nostr-zap-button data-nevent="nostr:nevent1qvzqqqqqqypzq06y2wleld92k49jm42hfcrj5vthzt9e8s49ftvuc3mkxj0cvar0qywhwumn8ghj7mn0wd68ytnzd96xxmmfdejhytnnda3kjctv9uq3qamnwvaz7tmwdaehgu3wd4hk6tcpzemhxue69uhk2er9dchxummnw3ezumrpdejz7qpqffrc5c75chrg89k5lp8jdt9zqfeyf47pffyyqm9fvgk6kcrx7dzs3teq6u" data-amount="100" data-comment="Nice note!"&gt;&lt;/nostr-zap-button&gt;</code>
+      <p><em>Note: Ensure the nevent ID is for an event that exists and whose author has a zap configuration.</em></p>
+    </div>
+
+    <div class="container">
+      <h2>Zap with Custom Relays</h2>
+      <p>Zapping with specific relays. (Recipient: Jack)</p>
+      <nostr-zap-button
+        data-nip05="jack@cash.app"
+        data-amount="50"
+        relays="wss://relay.damus.io,wss://relay.primal.net"
+      ></nostr-zap-button>
+      <code>&lt;nostr-zap-button data-nip05="jack@cash.app" data-amount="50" relays="wss://relay.damus.io,wss://relay.primal.net"&gt;&lt;/nostr-zap-button&gt;</code>
+    </div>
 
   </body>
 </html>

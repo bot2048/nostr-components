@@ -22,7 +22,7 @@ export default defineConfig({
         ),
         'nostr-zap-button': resolve(
           __dirname,
-          'src/nostr-follow-button/nostr-zap.ts'
+          'src/nostr-zap/nostr-zap.ts'
         ),
         'nostr-post': resolve(__dirname, 'src/nostr-post/nostr-post.ts'),
         'nostr-profile': resolve(
